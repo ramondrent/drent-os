@@ -603,3 +603,51 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .tile .app-artwork img{left:0;top:0;width:100%;height:100%;object-fit:contain}
 .tile.is-focus .app-artwork{box-shadow:0 8px 18px rgba(0,0,0,.28),0 0 0 2px rgba(255,255,255,.8)}
 .a-icons .tile .mark.app-artwork{left:20px;top:34px;width:136px;height:76.5px;border-radius:10px}
+
+/* Plex shelf: static translucent surfaces, no live blur. */
+.cw{position:absolute;left:144px;right:144px;top:920px;color:#fff;font-family:Manrope,sans-serif;text-shadow:0 2px 8px #0009;z-index:5}
+.cw[hidden]{display:none}.cw-heading{display:flex;align-items:baseline;gap:24px;margin-bottom:24px}.cw-heading h2{font-size:32px;font-weight:600;margin:0}.cw-heading>span{font-size:18px;opacity:.8}
+.cw-viewport{overflow:hidden;padding:10px;margin:-10px}.cw-track{display:flex;gap:24px;transition:transform .18s ease}.cw-card{flex:0 0 348px;width:348px;padding:0;border:0;background:none;color:inherit;text-align:left;font:inherit;text-shadow:inherit;outline:none;cursor:pointer}
+.cw-art{height:196px;border-radius:16px;position:relative;overflow:hidden;background:#18212c;box-shadow:0 6px 24px #0005;outline:3px solid transparent;outline-offset:4px}.cw-art img{width:100%;height:100%;object-fit:cover}.cw-card.is-focus .cw-art{outline-color:white}.cw-card strong{display:block;font-size:25px;margin-top:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cw-subtitle{display:block;font-size:17px;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:.9}.cw-badge{position:absolute;bottom:15px;left:14px;padding:5px 10px;border-radius:6px;background:#000b;font-size:15px}.cw-progress{position:absolute;bottom:0;left:0;right:0;height:5px;background:#ffffff45}.cw-progress i{height:100%;display:block;background:#fff}.cw-status{font-size:18px;margin-top:20px;min-height:25px}.cw-empty{border:1px solid #ffffff40;background:#18212cbb;color:white;padding:28px 40px;border-radius:16px;text-align:left;font:24px Manrope,sans-serif}.cw-empty small{display:block;font-size:18px;margin-top:12px}.cw-empty.is-focus{outline:3px solid white;outline-offset:4px}.cw-list{left:1010px;right:90px;top:255px}.cw-list .cw-heading{display:block}.cw-list .cw-heading>span{display:block;margin-top:10px}.bg-light .cw{color:#17202b;text-shadow:none}.bg-light .cw-badge{color:white}@media(prefers-reduced-motion:reduce){.cw-track{transition:none}}
+
+/* App name editor: remote-first, no dependence on a system keyboard. */
+.settings-group{height:96px}.settings-group-name{font-size:34px;line-height:40px}.settings-group-value{font-size:23px;line-height:30px}
+.name-list{position:absolute;left:140px;right:140px;top:240px}.name-app{display:flex;align-items:center;justify-content:space-between;width:100%;height:96px;padding:0 26px;color:var(--ink);border-radius:16px}.name-app strong{font-size:32px;font-weight:500}.name-app span{font-size:23px;opacity:.65}.name-app.is-focus,.name-key.is-focus{background:var(--solid);color:var(--solid-ink)}
+.name-value{position:absolute;left:140px;right:140px;top:230px;padding:26px 30px;border:2px solid var(--mute);border-radius:18px;color:var(--ink);font-size:42px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.name-keyboard{position:absolute;left:140px;top:370px;width:1640px;display:grid;grid-template-columns:repeat(10,1fr);gap:12px}.name-key{text-align:center;height:92px;border-radius:14px;border:1px solid var(--mute);color:var(--ink);font-size:32px}.name-command{font-size:24px}.name-help{position:absolute;left:140px;top:930px;color:var(--ink);font-size:25px}
+
+/* A clipped media row hints at the second vertical focus position. */
+.l-dock .home{transition:transform 280ms var(--ease);transform:translate3d(0,0,0)}
+.l-dock .home.is-scrolled{transform:translate3d(0,calc(-1 * var(--media-scroll,500px)),0)}
+.home-date{font-family:Manrope,sans-serif;font-size:24px;line-height:32px;font-weight:400;letter-spacing:0;white-space:nowrap;text-shadow:0 1px 3px #0006}
+.bg-photo.l-dock.has-dock-clock-ink .home-date{color:var(--dock-clock-ink)}
+.bg-photo.l-list.has-clock-ink .home-date{color:var(--clock-ink)}
+.bg-photo.has-adaptive-ink.l-dock .home-date{color:var(--tl-clock-ink)}
+.bg-photo.has-adaptive-ink.l-list .home-date{color:var(--tr-clock-ink)}
+.bg-dark .home-date,.bg-light .home-date{text-shadow:none;opacity:.8}
+.cw-heading .cw-scroll-hint{margin-left:auto;font-size:20px;opacity:.9}
+.cw-list .cw-scroll-hint{display:none}
+@media(prefers-reduced-motion:reduce){.l-dock .home{transition:none}}
+
+/* Landscape Home tiles; brand marks retain their original proportions. */
+.dock .tile,.dock .plate{border-radius:24px}
+.dock .mat,.dock .mat::after{border-radius:36px}
+.a-both .dock .tile .mark{left:100px;top:24px}
+.a-icons .dock .tile .mark{left:76px;top:37px}
+.a-both .dock .tile .mark.app-artwork{left:64px;top:8px;width:192px;height:108px}
+.a-icons .dock .tile .mark.app-artwork{left:48px;top:27px;width:192px;height:108px}
+
+/* Keep the cached glass field registered to the stationary wallpaper during Home scroll. */
+.l-dock .dock .mat-img,.l-dock .dock .mat-scrim{translate:0 0;transition:translate 280ms var(--ease)}
+.l-dock .home.is-scrolled .dock .mat-img,.l-dock .home.is-scrolled .dock .mat-scrim{translate:0 var(--media-scroll,500px)}
+@media(prefers-reduced-motion:reduce){.l-dock .dock .mat-img,.l-dock .dock .mat-scrim{transition:none}}
+
+/* Media browsing uses a cached blur crossfade, keeping the animation compositor-only. */
+.media-backdrop{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity 360ms var(--ease)}
+.media-backdrop img{width:1920px;height:1080px;object-fit:cover}
+.media-backdrop>div{position:absolute;inset:0;background:rgba(5,10,16,.24)}
+.media-focus.bg-photo .media-backdrop{opacity:1}
+.cw-row-1 .cw-badge,.cw-row-2 .cw-badge,.cw-row-1 .cw-progress,.cw-row-2 .cw-progress{display:none}
+.cw-empty small:empty{display:none}
+.cw-status{position:absolute;top:324px;margin:0}
+@media(prefers-reduced-motion:reduce){.media-backdrop{transition:none}}

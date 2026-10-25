@@ -68,6 +68,10 @@ def write_widget_archive(output, root=ROOT, include_private=True):
     """Create an unsigned archive without reading signing or device settings."""
     app = root / 'app'
     overlay = font_overlay(root, include_private)
+    runtime_config = root / '.local/runtime-config.json'
+    if include_private and runtime_config.is_file():
+        config = json.loads(runtime_config.read_text())
+        overlay['runtime-config.js'] = ('window.RamonConfig = ' + json.dumps(config) + ';\n').encode()
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED, allowZip64=False) as package:
         for source in sorted(app.rglob('*')):
             if source.is_symlink():

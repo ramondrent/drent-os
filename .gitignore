@@ -14,3 +14,5 @@
 *.wgt
 *.ipk
 **/private-fonts/
+
+**/service/config.json

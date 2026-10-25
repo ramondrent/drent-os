@@ -1,11 +1,14 @@
-/* CleanFrame Home. Static materials, local preferences and public Tizen app controls. */
+/* CleanFrame Home. Static materials, local preferences and Samsung Tizen app controls. */
 (function () {
   'use strict';
+
+  var mediaAvailable = !!window.FrameContinue;
+  var Media = window.FrameContinue || { render: function () {}, refresh: function () {}, onChange: function () {}, key: function () {}, select: function () {}, state: function () { return { count: 0, error: 'Media extension unavailable' }; } };
 
   /* ---------- Bundled data ---------- */
   var ASSETS = 'assets/', ICONS = ASSETS + 'icons/', WP = ASSETS + 'wallpapers/';
   var CAP = 9, SCRIM_Y = 560;
-  var DOCK_MODES = { both: { tw: 288, th: 224, pitch: 296 }, text: { tw: 288, th: 104, pitch: 296 }, icons: { tw: 176, th: 144, pitch: 184 } };
+  var DOCK_MODES = { both: { tw: 320, th: 180, pitch: 328 }, text: { tw: 320, th: 104, pitch: 328 }, icons: { tw: 288, th: 162, pitch: 296 } };
   var GRID_ROW = 240, GRID_COL = 344, COLS = 5;
   var ED_ROW = 80, ED_SEP = 56, ED_VIEW = 752, STRIP_PITCH = 188;
   var PH_TOP = 220, PH_PITCH = 128, PH_FULL = 5, PH_HEIGHT = 944, PH_COMPACT_TOP = 144, PH_COMPACT_PITCH = 88, PH_COMPACT_VISIBLE = 9;
@@ -86,7 +89,26 @@
   function derivedTheme() { return S.c.layout === 'list' ? 'list' : 'shore'; }
 
   /* ---------- Helpers ---------- */
-  function app(id) { for (var i = 0; i < APPS.length; i++) if (APPS[i].id === id) return APPS[i]; return null; }
+  function app(id) {
+    for (var i = 0; i < APPS.length; i++) if (APPS[i].id === id) {
+      var a = APPS[i], alias = S.c && S.c.names && S.c.names[id], copy;
+      if (a.appId === 'kIciSQlYEM.plex') {
+        copy = {}; Object.keys(a).forEach(function (key) { copy[key] = a[key]; });
+        copy.name = alias && alias !== 'PlxNative' ? alias : 'Plex'; copy.nativeName = 'Plex'; return copy;
+      }
+      if (!alias) return a;
+      copy = {}; Object.keys(a).forEach(function (key) { copy[key] = a[key]; });
+      copy.nativeName = a.name; copy.name = alias; return copy;
+    }
+    return null;
+  }
+  function cleanNames(names) {
+    var result = {};
+    if (names && typeof names === 'object' && !Array.isArray(names)) Object.keys(names).slice(0, 256).forEach(function (id) {
+      if (safeId(id) && typeof names[id] === 'string' && names[id].trim()) result[id] = names[id].replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, 48);
+    });
+    return result;
+  }
   function wall(id) { for (var i = 0; i < WALLS.length; i++) if (WALLS[i].id === id) return WALLS[i]; return null; }
   function wallIndex(id) { for (var i = 0; i < WALLS.length; i++) if (WALLS[i].id === id) return i; return 0; }
   function frostClass(w) { var i = [.12, .20, .30, .36, .44].indexOf(w.frostVeil); return i > 0 ? ' fv-' + (i + 1) : ''; }
@@ -136,6 +158,8 @@
       + (maskSupport ? '<span class="mk" style="' + st + ';-webkit-mask-image:url(' + ICONS + id + '.svg);mask-image:url(' + ICONS + id + '.svg)"></span>' : '<img alt="" src="' + ICONS + id + '.svg" style="' + st + '">') + '</span>';
   }
   function appMark(a, w, h, size) {
+    if (a.appId === '9Ur5IzDKqV.TizenYouTube') return '<span class="mark youtube-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></span>';
+    if (a.appId === 'kIciSQlYEM.plex') return '<span class="mark plex-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 48 48" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M12 4h13l14 20-14 20H12l14-20z"/></svg></span>';
     if (a.mark && (maskSupport || S.c.bg !== 'light')) return markHtml(a.brand || a.id, w, h, size);
     var words = a.name.split(/\s+/), letters = words[0].charAt(0) + (words.length > 1 ? words[1].charAt(0) : '');
     return '<span class="mark monogram' + (a.icon ? ' native-icon' : '') + '" style="width:' + w + 'px;height:' + h + 'px;font-size:' + Math.round(size * .65) + 'px"><span>' + esc(letters.toUpperCase()) + '</span>'
@@ -337,10 +361,10 @@
     (Array.isArray(s.recent) ? s.recent : []).forEach(function (id) { if (safeId(id) && app(id) && h.indexOf(id) < 0 && recent.indexOf(id) < 0 && recent.length < 5) recent.push(id); });
     return {
       bg: pick(modern.bg, LOOK_VALUES.bg, legacyList ? 'dark' : 'photo'), layout: pick(modern.layout, LOOK_VALUES.layout, legacyList ? 'list' : 'dock'),
-      apps: pick(modern.apps, LOOK_VALUES.apps, legacyList ? 'text' : 'both'), controls: pick(modern.controls, LOOK_VALUES.controls, 'both'),
+      apps: pick(modern.apps, LOOK_VALUES.apps, legacyList ? 'text' : 'both'), controls: pick(modern.controls, LOOK_VALUES.controls, 'icons'),
       focus: pick(modern.focus, LOOK_VALUES.focus, legacyList ? 'type' : 'glass'), material: pick(modern.material, LOOK_VALUES.material, 'soft'),
       font: pick(modern.font, LOOK_VALUES.font, 'manrope'), wall: wall(modern.wall || s.wallpaper) ? modern.wall || s.wallpaper : WALLS[0].id,
-      home: h, recent: recent, lastApp: h.indexOf(s.lastApp) >= 0 ? s.lastApp : h[0],
+      names: cleanNames(s.names), home: h, recent: recent, lastApp: h.indexOf(s.lastApp) >= 0 ? s.lastApp : h[0],
       mode: pick(s.mode, MODES.map(function (m) { return m.id; }), 'fixed')
     };
   }
@@ -352,7 +376,7 @@
     out.appRecords = [];
     c.home.concat(c.recent).forEach(function (key) {
       var a = app(key);
-      if (a && PRIMARY.indexOf(key) < 0 && !out.appRecords.some(function (r) { return r.id === key; })) out.appRecords.push({ id: a.id, appId: a.appId, name: a.name, brand: a.brand || '', icon: a.icon || '' });
+      if (a && PRIMARY.indexOf(key) < 0 && !out.appRecords.some(function (r) { return r.id === key; })) out.appRecords.push({ id: a.id, appId: a.appId, name: a.nativeName || a.name, brand: a.brand || '', icon: a.icon || '' });
     });
     return out;
   }
@@ -366,7 +390,7 @@
   }
   function clearSession() { S.undo = []; S.removedAt = {}; S.note = null; S.err = null; }
   function begin() { S.note = null; }
-  function next(home, recent) { var c = lookOf(S.c); c.home = home; c.recent = recent; c.lastApp = S.c.lastApp; c.mode = S.c.mode; return c; }
+  function next(home, recent) { var c = lookOf(S.c); c.home = home; c.recent = recent; c.lastApp = S.c.lastApp; c.mode = S.c.mode; c.names = cleanNames(S.c.names); return c; }
   function snap() { return { home: S.c.home.slice(), recent: S.c.recent.slice() }; }
   function pushRecent(list, id) { return [id].concat(without(list, id)).slice(0, 5); }
   function write(c, label) {
@@ -529,6 +553,13 @@
   V.home = {
     key: function (t, k) {
       var f = t.f, h = S.c.home, U = utils(), x = axes(), i = ensureSel();
+      if (f.zone === 'continue') {
+        if (k === 'back') { f.zone = 'apps'; if (Media.reset) Media.reset(); }
+        else if (k === 'up') { if (!Media.key(k)) f.zone = 'apps'; }
+        else Media.key(k);
+        return;
+      }
+      if (mediaAvailable && f.zone === 'apps' && ((S.c.layout === 'dock' && k === 'down') || (S.c.layout === 'list' && k === 'right'))) { f.zone = 'continue'; return; }
       if (S.c.layout === 'list') { listHomeKey(t, k, i, U); return; }
       if (f.zone === 'util') {
         f.u = clamp(f.u, 0, U.length - 1);
@@ -548,6 +579,7 @@
       else if (k === 'ok') launch(S.sel);
     },
     point: function (t, z, i) {
+      if (z === 'continue') { t.f.zone = 'continue'; Media.select(i); return; }
       if (z === 'util') { t.f.zone = 'util'; t.f.u = i; S.lastUtil = i; }
       else if (z === 'app') { t.f.zone = 'apps'; setSel(S.c.home[i]); }
       else if (z === 'empty') t.f.zone = 'apps';
@@ -573,6 +605,55 @@
     else if (k === 'back') openMessage('leave');
     else if (k === 'ok') { if (h.length) launch(S.sel); else addAppsRoute(); }
   }
+
+  /* ---------- Local app names and remote keyboard ---------- */
+  function nameApps() {
+    return S.c.home.concat(ALPHA).filter(function (id, i, all) { return app(id) && all.indexOf(id) === i; });
+  }
+  var NAME_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-&'.".split('');
+  var NAME_COMMANDS = ['Shift', 'Space', 'Delete', 'Clear', 'Default', 'Save', 'Cancel'];
+  function nameKeys(t) { return NAME_CHARS.map(function (c) { return t.lower ? c.toLowerCase() : c; }).concat(NAME_COMMANDS); }
+  function renameKey(t, value) {
+    if (value === 'Cancel') { S.err = null; pop(); return; }
+    if (value === 'Shift') t.lower = !t.lower;
+    else if (value === 'Delete') t.value = t.value.slice(0, -1);
+    else if (value === 'Clear') t.value = '';
+    else if (value === 'Default') { t.value = app(t.app).nativeName || app(t.app).name; t.reset = true; }
+    else if (value === 'Save') {
+      var label = t.value.trim(), c = next(S.c.home.slice(), S.c.recent.slice());
+      if (!label) { t.error = 'Enter a name, or choose Default.'; return; }
+      if (t.reset) delete c.names[t.app]; else c.names[t.app] = label.slice(0, 48);
+      if (!write(c, 'Rename app')) { t.error = 'Could not save. Please try again.'; return; }
+      catalog.revision++; widthCache = {}; pop(); return;
+    } else if (t.value.length < 48) t.value += value === 'Space' ? ' ' : value;
+    if (value !== 'Default') t.reset = false;
+    t.error = '';
+  }
+  V.names = {
+    sheet: true,
+    norm: function (t) { t.f.i = clamp(t.f.i, 0, Math.max(0, nameApps().length - 1)); },
+    key: function (t, k) {
+      var ids = nameApps();
+      if (k === 'back') { pop(); return; }
+      if (k === 'up') t.f.i = Math.max(0, t.f.i - 1);
+      if (k === 'down') t.f.i = Math.min(ids.length - 1, t.f.i + 1);
+      if (k === 'ok' && ids[t.f.i]) push({ id: 'rename', app: ids[t.f.i], value: app(ids[t.f.i]).name, lower: false, reset: false, error: '', f: { i: 0 } });
+    },
+    point: function (t, z, i) { if (z === 'name-app') { t.f.i = i; this.key(t, 'ok'); } }
+  };
+  V.rename = {
+    sheet: true,
+    key: function (t, k) {
+      var count = nameKeys(t).length;
+      if (k === 'back') { S.err = null; pop(); return; }
+      if (k === 'left') t.f.i = Math.max(0, t.f.i - 1);
+      if (k === 'right') t.f.i = Math.min(count - 1, t.f.i + 1);
+      if (k === 'up') t.f.i = Math.max(0, t.f.i - 10);
+      if (k === 'down') t.f.i = Math.min(count - 1, t.f.i + 10);
+      if (k === 'ok') renameKey(t, nameKeys(t)[t.f.i]);
+    },
+    point: function (t, z, i) { if (z === 'name-key') { t.f.i = i; this.key(t, 'ok'); } }
+  };
 
   /* ---------- Wallpaper child: focus previews, activation applies ---------- */
   function cancelWallpaperTimer(t) {
@@ -816,7 +897,8 @@
       { id: 'typography', label: 'Typography', value: FONTS[S.c.font].name },
       { id: 'focus', label: 'Focus', value: VALUE_NAMES[S.c.focus] + (materialApplies() ? ', ' + VALUE_NAMES[S.c.material] : '') },
       { id: 'editor', label: 'Apps on Home', value: n + (n === 1 ? ' app' : ' apps') },
-      { id: 'samsung', label: 'Samsung', value: 'Home and TV settings' }];
+      { id: 'names', label: 'App names', value: 'Rename apps in this launcher' },
+      { id: 'samsung', label: 'TV', value: 'Home and TV settings' }];
   }
   function settingsIds() { return settingsRows().map(function (r) { return r.id; }); }
   V.settings = {
@@ -834,9 +916,10 @@
   };
   function settingsOk(id) {
     if (id === 'editor') openEditor('settings');
+    else if (id === 'names') { refreshCatalog(); push({ id: 'names', f: { i: 0 }, top: 0 }); }
     else openAppearance(id);
   }
-  var DETAIL_NAMES = { background: 'Background', layout: 'Layout', typography: 'Typography', focus: 'Focus', rotation: 'Rotation', samsung: 'Samsung' };
+  var DETAIL_NAMES = { background: 'Background', layout: 'Layout', typography: 'Typography', focus: 'Focus', rotation: 'Rotation', samsung: 'TV' };
   function choice(axis, value, disabled) {
     return { action: axis === 'mode' ? 'rotation.' + value : 'choice.' + axis + '.' + value, axis: axis, value: value, disabled: !!disabled,
       label: axis === 'font' ? FONTS[value].name : axis === 'mode' ? MODES.filter(function (m) { return m.id === value; })[0].name : value === 'both' ? 'Both' : VALUE_NAMES[value] };
@@ -1018,6 +1101,11 @@
     else stage.style.removeProperty('--clock-ink');
     if (!adaptive && shown.dockClockInk) stage.style.setProperty('--dock-clock-ink', shown.dockClockInk);
     else stage.style.removeProperty('--dock-clock-ink');
+    stage.classList.toggle('media-focus', t.id === 'home' && t.f.zone === 'continue');
+    var mediaBlur = $('mediaBlur'), mediaBlurSrc = 'assets/materials/' + shown.id + '-field-frost.jpg';
+    if (mediaBlur.getAttribute('src') !== mediaBlurSrc) mediaBlur.src = mediaBlurSrc;
+    homeEl.style.setProperty('--media-scroll', (500 + (Media.state().row || 0) * 360) + 'px');
+    homeEl.classList.toggle('is-scrolled', t.id === 'home' && S.c.layout === 'dock' && t.f.zone === 'continue');
     applyHomeFont();
     if (!sheet) renderHome(t);
     renderSheet(t, sheet);
@@ -1043,6 +1131,7 @@
 
   function renderHome(t) {
     var hs = homeState(t);
+    Media.render(hs.zone === 'continue', t.id === 'home', S.c.layout === 'list');
     renderCaption(t, hs);
     renderUtils(hs);
     if (S.c.layout === 'list') renderList(hs);
@@ -1054,13 +1143,18 @@
     var d = new Date(), h = d.getHours(), m = d.getMinutes();
     return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m;
   }
+  function dateText() {
+    var d = new Date(), days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    var months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    return days[d.getDay()] + ', ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
   function clockHtml() {
     var text = clockText(), metrics = fontMetrics[homeFont()];
     if (!metrics || !metrics.digitCell) return text;
     return text.replace(/[0-9]/g, function (digit) { return '<span class="clock-digit">' + digit + '</span>'; });
   }
   function renderCaption(t, hs) {
-    var html = '<span class="clock">' + clockHtml() + '</span>';
+    var html = '<span class="clock">' + clockHtml() + '</span><span class="home-date">' + esc(dateText()) + '</span>';
     if (S.c.apps !== 'icons' && hs.items[hs.i] && (S.c.layout === 'list' ? photoLabel(hs.items[hs.i].id, false).size < 88 || photoLabel(hs.items[hs.i].id, false).ellipsis : hs.zone === 'apps' && reducedDockLabel(hs.items[hs.i].id))) html += '<span class="cap-line full-name">' + esc(app(hs.items[hs.i].id).name) + '</span>';
     setHTML(caption, html);
   }
@@ -1139,7 +1233,7 @@
       x = 280; placement = phFields[photoPlateIndex]._placement;
       y = placement.y + placement.height / 2 - 24;
     } else {
-      x = clamp(dockAnchorCenter - width / 2, 140, 1780 - width); y = 932;
+      x = clamp(dockAnchorCenter - width / 2, 140, 1780 - width); y = 660 + DOCK_MODES[S.c.apps].th + 52;
     }
     appFocusName.style.left = x + 'px'; appFocusName.style.top = (y + fontShift('primary', S.c.layout === 'list' ? 40 : 36)) + 'px';
     appFocusName.className = 'app-focus-name is-on';
@@ -1150,7 +1244,7 @@
     var broad = S.geom === 'broad' && n > 5;
     if (n < 0) { w = 912; shelfW = 880; }
     else if (broad) { w = 1728; shelfW = 1696; }
-    return { x: Math.round((1920 - w) / 2), y: 908 - m.th - 32, h: m.th + 32, w: w, shelf: shelfW, vis: vis, broad: broad, empty: n < 0, tw: m.tw, th: m.th, pitch: m.pitch };
+    return { x: Math.round((1920 - w) / 2), y: 660, h: m.th + 32, w: w, shelf: shelfW, vis: vis, broad: broad, empty: n < 0, tw: m.tw, th: m.th, pitch: m.pitch };
   }
   /* Five centred: the window moves one tile when focus passes an edge. Broad: keep a
      148px glimpse of the neighbour, as the current dock does. */
@@ -1183,7 +1277,7 @@
     if (it.kind === 'add') return '<span class="add">' + icon('plus') + '</span><span class="label">' + (full ? 'Home is full' : 'Add app') + '</span>';
     a = app(it.id);
     body = S.c.apps === 'text' ? '' : dockArtwork(a);
-    return body + (S.c.apps === 'icons' ? '' : '<span class="label" style="font-size:' + dockLabelSize(a.id) + 'px;top:' + ((S.c.apps === 'text' ? 28 : 164) + fontShift('primary', dockLabelSize(a.id))) + 'px"><span class="label-ink">' + esc(a.name) + '</span></span>') + '<span class="nudge nudge-l">' + icon('left') + '</span><span class="nudge nudge-r">' + icon('right') + '</span>';
+    return body + (S.c.apps === 'icons' ? '' : '<span class="label" style="font-size:' + dockLabelSize(a.id) + 'px;top:' + ((S.c.apps === 'text' ? 28 : 124) + fontShift('primary', dockLabelSize(a.id))) + 'px"><span class="label-ink">' + esc(a.name) + '</span></span>') + '<span class="nudge nudge-l">' + icon('left') + '</span><span class="nudge nudge-r">' + icon('right') + '</span>';
   }
   /* A wide label can reach the shelf before its icon. Check the rendered icon box,
      including during the track's 180ms transition, so both disappear together. */
@@ -1502,6 +1596,8 @@
     }).join('');
   }
   var FRAMES = {
+    names: function () { return '<h2 class="s-title">App names</h2><p class="s-sub">Choose an app to rename. Its launch target stays the same.</p><div class="name-list" data-slot="list"></div>'; },
+    rename: function () { return '<h2 class="s-title">Rename app</h2><div class="name-value" data-slot="value"></div><div class="name-keyboard" data-slot="keys"></div><p class="name-help" data-slot="help"></p>'; },
     apps: function () {
       return '<h2 class="s-title" data-slot="title"></h2><p class="s-sub" data-slot="sub"></p><div class="s-head" data-slot="head"></div>'
         + '<div class="grid-view" data-slot="view"><div class="grid-in" data-slot="grid"></div></div>'
@@ -1524,6 +1620,17 @@
     return '<span class="panel-content">' + appMark(a, 120, 72, 58) + '<span class="label">' + esc(a.name) + '</span></span><span class="state">' + state + '</span>';
   }
   var FILLS = {
+    names: function (t, el) {
+      var ids = nameApps(); t.top = clamp(t.top, Math.max(0, t.f.i - 6), t.f.i);
+      setHTML(el.list, ids.slice(t.top, t.top + 7).map(function (id, n) { var i = n + t.top;
+        return '<button class="name-app' + (i === t.f.i ? ' is-focus' : '') + '" data-z="name-app" data-i="' + i + '" data-action="names.' + id + '"><strong>' + esc(app(id).name) + '</strong><span>' + esc(app(id).nativeName || app(id).name) + '</span></button>';
+      }).join(''));
+    },
+    rename: function (t, el) {
+      el.value.textContent = t.value || 'Enter a name';
+      setHTML(el.keys, nameKeys(t).map(function (value, i) { return '<button class="name-key' + (i === t.f.i ? ' is-focus' : '') + (i >= 40 ? ' name-command' : '') + '" data-z="name-key" data-i="' + i + '" data-action="rename.' + i + '">' + esc(value) + '</button>'; }).join(''));
+      el.help.textContent = t.error || 'Use the remote to type · Save to apply · Back to cancel · ' + t.value.length + '/48';
+    },
     apps: function (t, el) {
       var f = t.f, items = appsItems(), n = items.length, rows = Math.ceil(n / COLS), vis = 3, row = Math.floor(f.i / COLS);
       setHTML(el.title, 'All apps');
@@ -1837,13 +1944,22 @@
     if (k === 'ok' || k === 'back') { if (ev.repeat || heldKeys[code]) return; heldKeys[code] = true; }
     press(k);
   });
+  var lastHomeWheel = 0;
+  stage.addEventListener('wheel', function (ev) {
+    var t = top();
+    if (t.id !== 'home' || S.c.layout !== 'dock' || !mediaAvailable || Math.abs(ev.deltaY) < 5) return;
+    ev.preventDefault();
+    if (Date.now() - lastHomeWheel < 400) return;
+    if (ev.deltaY > 0 && (t.f.zone === 'apps' || t.f.zone === 'continue')) { lastHomeWheel = Date.now(); press('down'); }
+    else if (ev.deltaY < 0 && t.f.zone === 'continue') { lastHomeWheel = Date.now(); press('up'); }
+  }, { passive: false });
   document.addEventListener('keyup', function (ev) { delete heldKeys[ev.keyCode]; });
   window.addEventListener('blur', function () { heldKeys = {}; });
   window.addEventListener('focus', function () { release(); focusStage(); after(); updateClock(); });
   document.addEventListener('visibilitychange', function () {
     heldKeys = {};
     if (document.hidden) { pauseRotation(); clearTimeout(clockTimer); }
-    else { release(); after(); updateClock(); focusStage(); }
+    else { release(); after(); updateClock(); focusStage(); Media.refresh(false); }
   });
   window.addEventListener('resize', fit);
 
@@ -1853,6 +1969,7 @@
     var out = serialise(S.c), t = top(), item = t.id === 'appearance' ? detailLocation(t).item : null;
     out.committed = S.c; out.shown = S.shown; out.pending = S.pending; out.view = t.id; out.selected = S.sel;
     out.focusAction = focusedAction(); out.writes = S.writes; out.failedWrites = S.failed; out.error = S.err;
+    out.continueWatching = Media.state();
     out.catalog = { loading: catalog.loading, loaded: catalog.loaded, error: catalog.error, ids: ALPHA.slice() };
     out.fonts = { available: LOOK_VALUES.font.slice(), loaded: Object.keys(fontMetrics).filter(function (id) { return !fontMetrics[id].fallback; }), baselineFallback: !!(fontMetrics.manrope && fontMetrics.manrope.fallback), error: S.lookError && S.lookError.type === 'font' ? S.lookError : null };
     out.rotation = { activeMs: activeMs + (activeSince ? Date.now() - activeSince : 0), active: !!activeSince };
@@ -1882,4 +1999,17 @@
   initialise();
   setLook({}, { transient: true, startup: true });
   norm(); render(); fit(); focusStage(); updateClock(); syncRotation();
+  refreshCatalog();
+  Media.onChange(function () { if (top().id === "home") render(); });
+  Media.refresh(true);
+  setInterval(function () { if (!document.hidden && top().id === "home") Media.refresh(false); }, 60000);
+  var readyTries = 0;
+  var readyTimer = setInterval(function () {
+    if (QA.ready() || ++readyTries >= 80) {
+      clearInterval(readyTimer);
+      var readyLog = new XMLHttpRequest();
+      readyLog.open('GET', 'http://127.0.0.1:8765/api/log?m=' + encodeURIComponent(QA.ready() ? 'CleanFrame webOS ready media=' + (mediaAvailable ? 'loaded' : 'unavailable') : 'CleanFrame webOS appearance timeout'), true);
+      readyLog.timeout = 3000; readyLog.send();
+    }
+  }, 250);
 })();

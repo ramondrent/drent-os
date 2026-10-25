@@ -1,0 +1,6 @@
+{
+  "plexUrl": "http://PLEX_SERVER:32400",
+  "plexToken": "REPLACE_LOCALLY",
+  "plexClient": "GENERATE_A_UNIQUE_CLIENT_ID",
+  "port": 8766
+}

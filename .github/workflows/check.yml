@@ -1,0 +1,36 @@
+name: Check launchers
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [lg, samsung]
+    defaults:
+      run:
+        working-directory: ${{ matrix.platform }}
+    env:
+      CLEANFRAME_PUBLIC_FONTS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: ${{ matrix.platform }}/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python3 tools/audit-source.py
+        working-directory: .
+      - run: npm ci
+      - run: npm run check
+      - run: npm run check:public
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check:browser
+      - if: matrix.platform == 'lg'
+        run: node scripts/check-media.cjs

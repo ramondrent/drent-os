@@ -32,6 +32,5 @@ jobs:
       - run: npm run check:public
       - run: npx playwright install --with-deps chromium
       - run: npm run check:browser
-      - run: node scripts/check-media.cjs
-      - if: matrix.platform == 'samsung'
-        run: node scripts/check-playback.cjs
+      - if: matrix.platform == 'lg'
+        run: node scripts/check-media.cjs

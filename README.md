@@ -9,7 +9,7 @@ Ramon OS brings both working versions under one identity. They share a design an
 | Version | Features | Guide |
 | --- | --- | --- |
 | LG webOS | Landscape app dock, custom app names and monochrome icons, date/clock, scrolling Plex Continue Watching and recent additions, direct native Plex playback, aerial idle mode | [LG setup](lg/README.md) |
-| Samsung Tizen | Freestyle launcher, app artwork cards, wallpaper/appearance settings, native app launching | [Samsung setup](samsung/README.md) |
+| Samsung Tizen | Freestyle launcher, direct Plex shelves, native Plex playback handoff, aerial idle mode, wallpaper/appearance settings | [Samsung setup](samsung/README.md) |
 
 ## Preview locally
 

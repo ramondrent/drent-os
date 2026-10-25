@@ -33,7 +33,7 @@ The selected font applies to Home app names, the clock and Home controls, includ
 
 ## Streaming apps
 
-The nine default apps keep their known native IDs. Other installed consumer apps can also be added to Home. Launching uses the public `tizen.application.launch` API with the app's native ID. Missing apps and denied launches produce a real error. No web player, placeholder success page or account credential is embedded.
+The four personal Freestyle apps keep their known native IDs. Other installed consumer apps can also be added to Home. Launching uses the public `tizen.application.launch` API with the app's native ID. Missing apps and denied launches produce a real error. No web player, placeholder success page or account credential is embedded.
 
 ## All apps
 
@@ -81,8 +81,14 @@ The native Home operation and startup configuration from 19 October remain separ
 
 ## Clock and rendering
 
-Both layouts show the TV's local time in zero-padded 24-hour format (`00:00`–`23:59`), without seconds. It updates at the minute boundary and on return to the launcher. No date or clock panel is shown.
+Both layouts show the TV's local time in zero-padded 24-hour format (`00:00`–`23:59`), without seconds. It updates at the minute boundary and on return to the launcher. The current date appears beneath the clock.
 
 Photographic materials and blurred panel backgrounds are generated before packaging and stay aligned with the full-screen image. Photo colour and contrast metadata are also prepared offline. Navigation does not sample image pixels, run an optics engine or apply live backdrop blur. Flat backgrounds use matching light or dark panel colours. Focus feedback uses transforms and opacity; reduced motion removes animated scaling and movement while retaining opacity feedback.
 
 The personal Freestyle Dock shows bundled artwork cards for Plex, YouTube, NPO Start and KIJK in Icons or Icons and text presentation. Text presentation and List retain their existing content. Native app IDs and navigation are unchanged.
+
+## Plex shelves and aerial idle mode
+
+Down from the Dock enters Continue Watching, then Recently added movies and Recently added TV shows. Up returns through the rows to the Dock. The background crossfades to its cached blurred image while browsing media. OK requests playback in Samsung Plex; selecting a series uses On Deck or the first unwatched episode. Shelf content comes directly from the configured Plex server. Network or authorization errors stay visible with a retry action.
+
+After 60 seconds of idle Home time in the personal configuration, aerial video fills the screen. The first remote input stops video and returns to Home without activating a tile. Leaving Home stops video. App names can be edited under Settings → App names.

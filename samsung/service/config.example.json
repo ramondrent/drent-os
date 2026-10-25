@@ -1,9 +1,0 @@
-{
-  "plexUrl": "http://PLEX_SERVER:32400",
-  "plexToken": "REPLACE_LOCALLY",
-  "plexClient": "GENERATE_A_UNIQUE_CLIENT_ID",
-  "samsungClient": "SAMSUNG_PLEX_CLIENT_IDENTIFIER",
-  "accessKey": "GENERATE_A_RANDOM_ACCESS_KEY",
-  "port": 8767,
-  "bindHost": "0.0.0.0"
-}

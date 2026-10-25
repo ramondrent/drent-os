@@ -5,7 +5,7 @@
   "description": "Ramon OS launcher \u2014 Samsung Tizen edition",
   "scripts": {
     "dev": "python3 scripts/preview.py",
-    "check": "node --check app/main.js && node --check app/device.js && python3 scripts/check.py && node --check app/continue.js && node --check app/aerial.js && node --check service/media-bridge.cjs",
+    "check": "node --check app/main.js && node --check app/device.js && python3 scripts/check.py && node --check app/continue.js && node --check app/aerial.js && node --check app/plex.js",
     "package": "python3 scripts/package.py",
     "tv:info": "python3 scripts/tv.py info",
     "tv:install": "python3 scripts/tv.py install",
@@ -15,7 +15,7 @@
     "export:public": "python3 scripts/export-public.py",
     "check:public": "python3 scripts/check-public.py",
     "check:browser:upstream": "node scripts/check-browser.mjs",
-    "check:media": "node scripts/check-media.cjs && node scripts/check-playback.cjs"
+    "check:media": "node scripts/check-media-ui.mjs"
   },
   "devDependencies": {
     "playwright": "1.64.1"

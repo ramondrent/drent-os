@@ -1,15 +1,13 @@
-/* Plex shelf. No account credentials are exposed to this web app. */
+/* Plex shelves backed directly by the private TV client. */
 (function () {
  'use strict';
- var base=(window.RamonConfig||{}).mediaBase||'',items=[],index=0,loading=false,loaded=false,error='',busy=false,last=0,notify=function(){},signature='';
+ var items=[],index=0,loading=false,loaded=false,error='',busy=false,last=0,notify=function(){},signature='';
  var rowIndex=0,rows=['Continue watching','Recently added movies','Recently added TV shows'].map(function(title,n){
   var root=document.createElement('section');root.id=n?'recentShelf'+n:'continueWatching';root.className='cw cw-row-'+n;root.setAttribute('aria-label',title);document.getElementById('home').appendChild(root);
   return {title:title,root:root,items:[],index:0,signature:'',error:''};
  });
  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
- function request(path,post,done){if(!base){done('Connect a media service to see your Plex library');return;}var x=new XMLHttpRequest();x.open(post?'POST':'GET',base+path,true);x.timeout=30000;if((window.RamonConfig||{}).accessKey)x.setRequestHeader('X-Ramon-Key',window.RamonConfig.accessKey);
- x.onload=function(){var d;try{d=JSON.parse(x.responseText);}catch(e){done('Invalid media response');return;}done(x.status===200?null:d.error||'Media service unavailable',d);};
- x.onerror=function(){done('Plex connection unavailable');};x.ontimeout=function(){done('Plex did not respond. Try again.');};if(post)x.setRequestHeader('X-CleanFrame','1');x.send();}
+ function request(path,post,done){window.FramePlex.request(path,post,done);}
  function refresh(force){if(loading||(!force&&Date.now()-last<60000))return;loading=true;notify();request('/continue',false,function(err,data){loading=false;last=Date.now();loaded=true;
  error=err||(!data.configured?'Connect Plex to see your shows and movies':'');
  if(!err){var selected=items[index]&&items[index].id;items=data.items||[];index=0;items.some(function(i,n){if(i.id===selected){index=n;return true;}return false;});}
@@ -26,7 +24,7 @@
    if(!items.length)html+='<button class="cw-empty" data-z="continue" data-i="'+(n*100)+'" data-action="continue.retry"><span class="cw-empty-title"></span><small></small></button>';
    else {
     html+='<div class="cw-viewport"><div class="cw-track">';
-    items.forEach(function(item,cardIndex){html+='<button class="cw-card" data-z="continue" data-i="'+(n*100+cardIndex)+'" data-action="continue.'+esc(item.id)+'" aria-label="'+esc(item.title+' '+item.subtitle)+'"><div class="cw-art">'+(item.image?'<img src="'+base+esc(item.image)+'?access='+encodeURIComponent((window.RamonConfig||{}).accessKey||'')+'" alt="">':'')+'<span class="cw-badge">'+(n?'Details':item.progress>0?'Resume':'Up next')+'</span><span class="cw-progress"><i style="width:'+Math.round(item.progress*100)+'%"></i></span></div><strong>'+esc(item.title)+'</strong><span class="cw-subtitle">'+esc(item.subtitle)+'</span></button>';});
+    items.forEach(function(item,cardIndex){html+='<button class="cw-card" data-z="continue" data-i="'+(n*100+cardIndex)+'" data-action="continue.'+esc(item.id)+'" aria-label="'+esc(item.title+' '+item.subtitle)+'"><div class="cw-art">'+(item.image?'<img src="'+esc(item.image)+'" alt="">':'')+'<span class="cw-badge">'+(n?'Details':item.progress>0?'Resume':'Up next')+'</span><span class="cw-progress"><i style="width:'+Math.round(item.progress*100)+'%"></i></span></div><strong>'+esc(item.title)+'</strong><span class="cw-subtitle">'+esc(item.subtitle)+'</span></button>';});
     html+='</div></div>';
    }
    html+='<p class="cw-status" aria-live="polite"></p>';root.innerHTML=html;
@@ -45,9 +43,7 @@
   root.querySelector('.cw-status').textContent=status;root.querySelector('.cw-status').hidden=!status;
  }
  function play(){if(busy)return;var row=rows[rowIndex];if(!row.items.length){refresh(true);return;}var item=row.items[row.index];busy=true;error='';notify();
- if(!base){busy=false;error='Connect a media service to play this title';notify();return;}
  request('/play/'+encodeURIComponent(item.id),true,function(err){busy=false;error=err||'';rows[rowIndex].error=error;notify();});
- FrameDevice.launchApp('kIciSQlYEM.plex',function(err){if(err){busy=false;error=err.message||'Could not open Plex';notify();}});
  }
  window.FrameContinue={render:render,refresh:refresh,onChange:function(fn){notify=fn;},key:function(k){var row=rows[rowIndex];if(k==='up'){if(!rowIndex)return false;rowIndex--;return true;}if(k==='down'){rowIndex=Math.min(2,rowIndex+1);return true;}if(k==='left')row.index=Math.max(0,row.index-1);if(k==='right')row.index=Math.min(Math.max(0,row.items.length-1),row.index+1);if(k==='ok')play();if(!rowIndex)index=row.index;return true;},reset:function(){rowIndex=0;},select:function(i){rowIndex=Math.max(0,Math.min(2,Math.floor(i/100)));var row=rows[rowIndex];row.index=Math.max(0,Math.min(row.items.length-1,i%100));play();},state:function(){return {count:items.length,loading:loading,loaded:loaded,error:error,index:rows[0].index,busy:busy,row:rowIndex};}};
 }());

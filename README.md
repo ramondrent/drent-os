@@ -46,7 +46,7 @@ Device credentials, certificates, SSH keys, addresses, account tokens, SDK insta
 
 ## Current status
 
-The owner has used both launchers on the named TVs. LG app naming, navigation, landscape layout, custom icons, and the earlier Infuse resume flow received owner feedback. The replacement native Plex resume integration has passed local tests and was installed; visible resume confirmation is still pending. The scroll/glass registration fix also awaits owner confirmation. Home-only aerial idle playback and recent Plex movie/show rows are implemented and installed; on-TV visual confirmation is pending.
+The owner has used both launchers on the named TVs. LG app naming, navigation, landscape layout, custom icons, and the earlier Infuse resume flow received owner feedback. The replacement native Plex resume integration has passed local tests and was installed; visible resume confirmation is still pending. The scroll/glass registration fix also awaits owner confirmation. The owner confirmed aerial playback after 60 seconds, remote wake-up, and the three Plex rows on the LG. The subsequent tighter spacing and blurred media backdrop are installed and await visual feedback.
 
 This is a personal source repository, not a universal installer or replacement TV firmware. LG uses an existing rooted CleanYourTV installation; Samsung uses a signed Tizen application. Existing native Home assignments are installation-specific.
 

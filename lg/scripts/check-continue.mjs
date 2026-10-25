@@ -16,10 +16,12 @@ try{
   await p.waitForFunction(()=>getComputedStyle(document.querySelector('#home')).transform==='matrix(1, 0, 0, 1, 0, -500)');
   const glassAfter=await p.locator('.dock .mat-img').boundingBox();
   assert(Math.abs(glassAfter.y-glassBefore.y)<1,'Glass wallpaper must stay registered while the dock scrolls');
+  assert.equal(await p.locator('.media-backdrop').evaluate(e=>getComputedStyle(e).filter),'none');
+  await p.waitForFunction(()=>getComputedStyle(document.querySelector('.media-backdrop')).opacity==='1');
   const revealed=await p.locator('.cw-card').first().boundingBox();assert(revealed.y>0&&revealed.y+revealed.height<width*9/16);
   await p.keyboard.press('ArrowDown');assert.equal(await p.evaluate(()=>ShoreQA.state().continueWatching.row),1);
   await p.keyboard.press('ArrowDown');assert.equal(await p.evaluate(()=>ShoreQA.state().continueWatching.row),2);
-  await p.waitForFunction(()=>getComputedStyle(document.querySelector('#home')).transform==='matrix(1, 0, 0, 1, 0, -1380)');
+  await p.waitForFunction(()=>getComputedStyle(document.querySelector('#home')).transform==='matrix(1, 0, 0, 1, 0, -1220)');
   assert.equal(await p.locator('.cw-card.is-focus').count(),1);
   const showBounds=await p.locator('#recentShelf2 .cw-card').boundingBox();assert(showBounds.y>0&&showBounds.y+showBounds.height<width*9/16);
   await p.screenshot({path:`output/playwright/recent-shows-${width}.png`});
@@ -33,6 +35,7 @@ try{
   fail=true;const n=launch.length;await p.keyboard.press('Enter');await p.waitForFunction(()=>ShoreQA.state().continueWatching.error==='Playback failed');assert.equal(launch.length,n);
   await p.keyboard.press('Escape');assert.equal(await p.evaluate(()=>ShoreQA.where().zone),'apps');
   await p.waitForFunction(()=>getComputedStyle(document.querySelector('#home')).transform==='matrix(1, 0, 0, 1, 0, 0)');
+  await p.waitForFunction(()=>getComputedStyle(document.querySelector('.media-backdrop')).opacity==='0');
   await p.locator('#stage').dispatchEvent('wheel',{deltaY:120});assert.equal(await p.evaluate(()=>ShoreQA.where().zone),'continue');await p.keyboard.press('ArrowUp');
   await p.evaluate(()=>{window.ClockNativeDate=Date;window.testDate='2026-12-31T23:59:00';window.Date=function(){return new ClockNativeDate(window.testDate);};Date.now=ClockNativeDate.now;window.dispatchEvent(new Event('focus'));});
   assert.equal(await p.locator('.home-date').textContent(),'Thursday, 31 December 2026');

@@ -18,11 +18,11 @@
  function render(active,visible,list){rows.forEach(function(row,n){renderRow(row,n,active&&n===rowIndex,visible,list);});}
  function renderRow(row,n,active,visible,list){
   var root=row.root,items=row.items,index=row.index,error=n?row.error:window.FrameContinue.state().error,signature=row.signature;
-  root.hidden=!visible;root.className='cw cw-row-'+n+(list?' cw-list':'');root.style.top=(list?255+(n-rowIndex)*440:920+n*440)+'px';if(!visible)return;
+  root.hidden=!visible;root.className='cw cw-row-'+n+(list?' cw-list':'');root.style.top=(list?255+(n-rowIndex)*360:920+n*360)+'px';if(!visible)return;
   var nextSignature=JSON.stringify(items),html,track,cards,i,status;
   if(nextSignature!==signature||!root.firstChild){
    row.signature=nextSignature;
-   html='<div class="cw-heading"><h2>'+row.title+'</h2><span>Plex</span><span class="cw-scroll-hint"></span></div>';
+   html='<div class="cw-heading"><h2>'+row.title+'</h2></div>';
    if(!items.length)html+='<button class="cw-empty" data-z="continue" data-i="'+(n*100)+'" data-action="continue.retry"><span class="cw-empty-title"></span><small></small></button>';
    else {
     html+='<div class="cw-viewport"><div class="cw-track">';
@@ -31,7 +31,7 @@
    }
    html+='<p class="cw-status" aria-live="polite"></p>';root.innerHTML=html;
   }
-  root.querySelector('.cw-scroll-hint').textContent=list?'':active?(n===2?'↑ Previous row':n?'↑ Previous row · ↓ Next row':'↑ Back to apps · ↓ More titles'):'↓ Scroll to watch';
+
   cards=root.querySelectorAll('.cw-card');
   for(i=0;i<cards.length;i++)cards[i].className='cw-card'+(active&&i===index?' is-focus':'');
   track=root.querySelector('.cw-track');
@@ -39,10 +39,10 @@
   if(!items.length){
    root.querySelector('.cw-empty').className='cw-empty'+(active?' is-focus':'');
    root.querySelector('.cw-empty-title').textContent=loading?'Loading your library…':error||(n?'No recent additions':'You’re all caught up');
-   root.querySelector('.cw-empty small').textContent=loading?'':error?'Press OK to retry':'Start something in Plex and it will appear here';
+   root.querySelector('.cw-empty small').textContent=loading?'':error?'Press OK to retry':'';
   }
-  status=active?(busy?'Opening Plex…':error||(items.length?(n?'OK for details in Plex':items[index].remaining+' min'+(items[index].progress>0?' remaining':'')+' · OK to resume in Plex'):'')):'';
-  root.querySelector('.cw-status').textContent=status;
+  status=active?(busy?'Opening…':error||''):'';
+  root.querySelector('.cw-status').textContent=status;root.querySelector('.cw-status').hidden=!status;
  }
  function play(){if(busy)return;var row=rows[rowIndex];if(!row.items.length){refresh(true);return;}var item=row.items[row.index];busy=true;error='';notify();
  request('/play/'+encodeURIComponent(item.id)+(rowIndex?'?action=open':''),true,function(err){busy=false;error=err?err.replace(/PlxNative/g,'Plex'):'';rows[rowIndex].error=error;notify();});}

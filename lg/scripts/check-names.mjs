@@ -15,7 +15,7 @@ try {for(const width of [1920,1280]) {
  await activate('rename.45');assert.equal(await page.evaluate(()=>ShoreQA.state().names.appletv),'RELAX');
  await page.evaluate(()=>ShoreQA.scene('home'));assert.equal(await page.locator('[data-action="home.app.appletv"]').getAttribute('aria-label'),'RELAX');
  const dock=await page.locator('#dock').boundingBox(),cw=await page.locator('#continueWatching').boundingBox();assert(dock.y+dock.height<cw.y,'Apps must be above Continue Watching');
- await page.keyboard.press('Enter');assert.equal(launches.at(-1),'com.webos.app.hdmi1');
+ await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/launch')),page.keyboard.press('Enter')]);assert.equal(launches.at(-1),'com.webos.app.hdmi1');
  await page.reload();await page.waitForFunction(()=>ShoreQA.ready());assert.equal(await page.locator('[data-action="home.app.appletv"]').getAttribute('aria-label'),'RELAX');
  await page.evaluate(()=>ShoreQA.look({wall:'alpine'}));await page.waitForFunction(()=>ShoreQA.ready());assert.equal(await page.evaluate(()=>ShoreQA.state().names.appletv),'RELAX');
  await openRename();await activate('rename.43');await activate('rename.0');await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>ShoreQA.state().names.appletv),'RELAX');

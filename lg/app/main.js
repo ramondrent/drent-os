@@ -1104,7 +1104,10 @@
     else stage.style.removeProperty('--clock-ink');
     if (!adaptive && shown.dockClockInk) stage.style.setProperty('--dock-clock-ink', shown.dockClockInk);
     else stage.style.removeProperty('--dock-clock-ink');
-    homeEl.style.setProperty('--media-scroll', (500 + (Media.state().row || 0) * 440) + 'px');
+    stage.classList.toggle('media-focus', t.id === 'home' && t.f.zone === 'continue');
+    var mediaBlur = $('mediaBlur'), mediaBlurSrc = 'assets/materials/' + shown.id + '-field-frost.jpg';
+    if (mediaBlur.getAttribute('src') !== mediaBlurSrc) mediaBlur.src = mediaBlurSrc;
+    homeEl.style.setProperty('--media-scroll', (500 + (Media.state().row || 0) * 360) + 'px');
     homeEl.classList.toggle('is-scrolled', t.id === 'home' && S.c.layout === 'dock' && t.f.zone === 'continue');
     applyHomeFont();
     if (!sheet) renderHome(t);

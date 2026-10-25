@@ -641,3 +641,13 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .l-dock .dock .mat-img,.l-dock .dock .mat-scrim{translate:0 0;transition:translate 280ms var(--ease)}
 .l-dock .home.is-scrolled .dock .mat-img,.l-dock .home.is-scrolled .dock .mat-scrim{translate:0 var(--media-scroll,500px)}
 @media(prefers-reduced-motion:reduce){.l-dock .dock .mat-img,.l-dock .dock .mat-scrim{transition:none}}
+
+/* Media browsing uses a cached blur crossfade, keeping the animation compositor-only. */
+.media-backdrop{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity 360ms var(--ease)}
+.media-backdrop img{width:1920px;height:1080px;object-fit:cover}
+.media-backdrop>div{position:absolute;inset:0;background:rgba(5,10,16,.24)}
+.media-focus.bg-photo .media-backdrop{opacity:1}
+.cw-row-1 .cw-badge,.cw-row-2 .cw-badge,.cw-row-1 .cw-progress,.cw-row-2 .cw-progress{display:none}
+.cw-empty small:empty{display:none}
+.cw-status{position:absolute;top:324px;margin:0}
+@media(prefers-reduced-motion:reduce){.media-backdrop{transition:none}}

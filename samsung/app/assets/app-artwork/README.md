@@ -8,3 +8,5 @@ Locally bundled 16:9 cards composed from service marks; no remote images or prom
 - KIJK: inline home logo from https://www.kijk.nl/, retrieved 2026-10-23. White mark on a custom purple background. Copyright remains with Talpa; no open licence asserted.
 
 NPO and KIJK assets are for this personal launcher experiment. Review rights before any public redistribution.
+
+Ramon OS uses transparent monochrome adaptations of these same marks on the shared glass tiles. The NPO diamond is white with dark internal lettering for contrast. No logo sources were changed.

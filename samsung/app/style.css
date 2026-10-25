@@ -651,3 +651,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .cw-empty small:empty{display:none}
 .cw-status{position:absolute;top:324px;margin:0}
 @media(prefers-reduced-motion:reduce){.media-backdrop{transition:none}}
+
+/* Transparent brand marks sit directly on the shared glass surface. */
+.tile .mark.app-artwork,.tile.is-focus .mark.app-artwork{border-radius:0;overflow:visible;box-shadow:none}
+.tile .app-artwork img{filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}

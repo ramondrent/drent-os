@@ -39,6 +39,23 @@ function createBridge(config,call=request,launch=launchPlxNative){
    cache={configured:true,playbackConfigured:true,items};at=Date.now();return cache;
   })();try{return await inflight;}finally{inflight=null;}
  }
+ let recentCache=null,recentAt=0,recentInflight=null;
+ async function recent(){
+  if(!config.plexToken)return {movies:[],shows:[]};
+  if(recentCache&&Date.now()-recentAt<60000)return recentCache;
+  if(recentInflight)return recentInflight;
+  recentInflight=(async()=>{
+   const sections=await plex('/library/sections');
+   const groups=await Promise.all((sections.MediaContainer.Directory||[]).filter(s=>['movie','show'].includes(s.type)&&/^\d+$/.test(s.key)).map(async section=>{
+    const data=await call(config.plexUrl,'/library/sections/'+section.key+'/all?type='+(section.type==='movie'?'1':'2')+'&sort=addedAt%3Adesc',{...ph,'X-Plex-Container-Start':'0','X-Plex-Container-Size':'12'});
+    return (data.MediaContainer.Metadata||[]).filter(i=>['movie','show'].includes(i.type)&&/^\d+$/.test(String(i.ratingKey))).map(i=>({id:String(i.ratingKey),title:i.title,subtitle:String(i.year||''),type:i.type,added:Number(i.addedAt)||0,progress:0,remaining:0,art:i.art||i.thumb||'',action:'open',playable:true}));
+   }));
+   const all=groups.flat().sort((a,b)=>b.added-a.added);
+   recentCache={movies:all.filter(i=>i.type==='movie').slice(0,12),shows:all.filter(i=>i.type==='show').slice(0,12)};recentAt=Date.now();return recentCache;
+  })();try{return await recentInflight;}finally{recentInflight=null;}
+ }
+ const publicItems=items=>items.map(({art,...i})=>({...i,image:art?'/art/'+i.id:null}));
+ async function findItem(id){const data=await list();let item=data.items.find(i=>i.id===id);if(!item){const r=await recent();item=r.movies.concat(r.shows).find(i=>i.id===id);}return item;}
  const server=http.createServer(async(req,res)=>{
   const origin=req.headers.origin;
   if(origin&&origin!=='null'&&origin!==config.previewOrigin){res.writeHead(403);return res.end();}
@@ -47,11 +64,13 @@ function createBridge(config,call=request,launch=launchPlxNative){
   if(req.method==='OPTIONS'){res.writeHead(204,{...cors,'Access-Control-Allow-Headers':'Content-Type, X-CleanFrame','Access-Control-Allow-Methods':'GET, POST'});return res.end();}
   let u;try{u=new URL(req.url,'http://localhost');}catch(e){return send(400,{error:'Invalid URL'});}
   try {
+   if(req.method==='GET'&&u.pathname==='/aerial'){const a=config.aerial||{};return send(200,{enabled:a.enabled===true,idleSeconds:a.idleSeconds||60,urls:(a.urls||[]).filter(u=>typeof u==='string'&&/^https:\/\//.test(u)).slice(0,12)});}
+   if(req.method==='GET'&&u.pathname==='/recent'){const r=await recent();return send(200,{movies:publicItems(r.movies),shows:publicItems(r.shows)});}
    if(req.method==='GET'&&u.pathname==='/continue'){
     const data=await list();return send(200,{...data,items:data.items.map(({art,...i})=>({...i,image:art?'/art/'+i.id:null}))});
    }
    if(req.method==='GET'&&/^\/art\/\d+$/.test(u.pathname)){
-    const data=await list(),item=data.items.find(i=>i.id===u.pathname.slice(5));
+    const item=await findItem(u.pathname.slice(5));
     if(!item||!/^\/library\/metadata\/\d+\/(?:thumb|art)(?:\/\d+)?$/.test(item.art))return send(404,{error:'Artwork unavailable'});
     const artKey=item.art;
     if(!artCache.has(artKey)){
@@ -68,9 +87,9 @@ function createBridge(config,call=request,launch=launchPlxNative){
     if(playing)return send(409,{error:'Already opening PlxNative'});
     playing=true;
     try{
-     const data=await list(),item=data.items.find(i=>i.id===u.pathname.slice(6));
-     if(!item)return send(404,{error:'This title is no longer in Continue Watching'});
-     await launch({server:await serverIdentity(),ratingKey:item.id,action:'play'});
+     const item=await findItem(u.pathname.slice(6));
+     if(!item)return send(404,{error:'This title is no longer on your home screen'});
+     await launch({server:await serverIdentity(),ratingKey:item.id,action:u.searchParams.get('action')==='open'?'open':item.action||'play'});
      return send(200,{ok:true});
     }finally{playing=false;}
    }

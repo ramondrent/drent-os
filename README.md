@@ -8,7 +8,7 @@ Ramon OS brings both working versions under one identity. They share a design an
 
 | Version | Features | Guide |
 | --- | --- | --- |
-| LG webOS | Landscape app dock, custom app names and monochrome icons, date/clock, scrolling Plex Continue Watching, direct resume in the native Plex client | [LG setup](lg/README.md) |
+| LG webOS | Landscape app dock, custom app names and monochrome icons, date/clock, scrolling Plex Continue Watching and recent additions, direct native Plex playback, aerial idle mode | [LG setup](lg/README.md) |
 | Samsung Tizen | Freestyle launcher, app artwork cards, wallpaper/appearance settings, native app launching | [Samsung setup](samsung/README.md) |
 
 ## Preview locally
@@ -46,7 +46,7 @@ Device credentials, certificates, SSH keys, addresses, account tokens, SDK insta
 
 ## Current status
 
-The owner has used both launchers on the named TVs. LG app naming, navigation, landscape layout, custom icons, and the earlier Infuse resume flow received owner feedback. The replacement native Plex resume integration has passed local tests and was installed; visible resume confirmation is still pending. The scroll/glass registration fix also awaits owner confirmation. Aerial video wallpapers have been investigated but are not implemented.
+The owner has used both launchers on the named TVs. LG app naming, navigation, landscape layout, custom icons, and the earlier Infuse resume flow received owner feedback. The replacement native Plex resume integration has passed local tests and was installed; visible resume confirmation is still pending. The scroll/glass registration fix also awaits owner confirmation. Home-only aerial idle playback and recent Plex movie/show rows are implemented and installed; on-TV visual confirmation is pending.
 
 This is a personal source repository, not a universal installer or replacement TV firmware. LG uses an existing rooted CleanYourTV installation; Samsung uses a signed Tizen application. Existing native Home assignments are installation-specific.
 

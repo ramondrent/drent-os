@@ -33,6 +33,14 @@ For an established installation, back up the changed frontend files before copyi
 
 ## Notes
 
-User preferences live in `cleanframe.webos.v1` localStorage. Native IDs remain unchanged when apps are renamed. Glass uses precomputed wallpaper materials with scroll compensation, not live blur. Aerial video wallpapers are not yet implemented.
+User preferences live in `cleanframe.webos.v1` localStorage. Native IDs remain unchanged when apps are renamed. Glass uses precomputed wallpaper materials with scroll compensation, not live blur. Home-only aerial idle playback is available through the media bridge configuration.
 
 The `docs/` directory includes upstream Samsung documentation for design and asset provenance. Its historical device and publication instructions are not the current LG setup. This README takes precedence for platform setup.
+
+## Aerial idle mode and recent Plex rows
+
+When `aerial.enabled` is true, Home starts a full-screen muted clip after `idleSeconds` (minimum 30; configured on the personal TV as 60). Add an `aerial` object to private media config with `enabled`, `idleSeconds`, and `urls` (HTTPS video URLs). Clips rotate after each finishes. No video files are bundled or redistributed. The personal playlist uses Apple-hosted 1080p H.264 streams discovered through the [webOS aerial project](https://github.com/aabytt/custom-screensaver-aerial); rights remain with their owners. Streams require internet access and can consume substantial bandwidth.
+
+The first input dismisses aerial mode without launching an app. Playback stops when Home loses focus or visibility. An error or stalled video returns to Home and backs off for five minutes; LG's stock screensaver remains available. This does not alter global screensaver settings or another app's idle behavior. Browser tests mock media playback; decoder compatibility and the absence of LG's clock require on-TV verification.
+
+Below Continue Watching, recently added movies and TV shows are fetched from each Plex library, sorted by `addedAt`, and limited to 12 per row. Down/Up moves between rows; Back returns to apps. New titles open their details in Plex; Continue Watching resumes directly.

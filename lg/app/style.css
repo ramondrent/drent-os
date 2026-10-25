@@ -618,7 +618,7 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 
 /* A clipped media row hints at the second vertical focus position. */
 .l-dock .home{transition:transform 280ms var(--ease);transform:translate3d(0,0,0)}
-.l-dock .home.is-scrolled{transform:translate3d(0,-500px,0)}
+.l-dock .home.is-scrolled{transform:translate3d(0,calc(-1 * var(--media-scroll,500px)),0)}
 .home-date{font-family:Manrope,sans-serif;font-size:24px;line-height:32px;font-weight:400;letter-spacing:0;white-space:nowrap;text-shadow:0 1px 3px #0006}
 .bg-photo.l-dock.has-dock-clock-ink .home-date{color:var(--dock-clock-ink)}
 .bg-photo.l-list.has-clock-ink .home-date{color:var(--clock-ink)}
@@ -639,5 +639,5 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 
 /* Keep the cached glass field registered to the stationary wallpaper during Home scroll. */
 .l-dock .dock .mat-img,.l-dock .dock .mat-scrim{translate:0 0;transition:translate 280ms var(--ease)}
-.l-dock .home.is-scrolled .dock .mat-img,.l-dock .home.is-scrolled .dock .mat-scrim{translate:0 500px}
+.l-dock .home.is-scrolled .dock .mat-img,.l-dock .home.is-scrolled .dock .mat-scrim{translate:0 var(--media-scroll,500px)}
 @media(prefers-reduced-motion:reduce){.l-dock .dock .mat-img,.l-dock .dock .mat-scrim{transition:none}}

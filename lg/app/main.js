@@ -557,8 +557,8 @@
     key: function (t, k) {
       var f = t.f, h = S.c.home, U = utils(), x = axes(), i = ensureSel();
       if (f.zone === 'continue') {
-        if (k === 'back' || (S.c.layout === 'dock' && k === 'up') || (S.c.layout === 'list' && k === 'down')) f.zone = 'apps';
-        else if (S.c.layout === 'list' && k === 'up') { f.zone = 'util'; f.u = clamp(S.lastUtil, 0, U.length - 1); }
+        if (k === 'back') { f.zone = 'apps'; if (Media.reset) Media.reset(); }
+        else if (k === 'up') { if (!Media.key(k)) f.zone = 'apps'; }
         else Media.key(k);
         return;
       }
@@ -1104,6 +1104,7 @@
     else stage.style.removeProperty('--clock-ink');
     if (!adaptive && shown.dockClockInk) stage.style.setProperty('--dock-clock-ink', shown.dockClockInk);
     else stage.style.removeProperty('--dock-clock-ink');
+    homeEl.style.setProperty('--media-scroll', (500 + (Media.state().row || 0) * 440) + 'px');
     homeEl.classList.toggle('is-scrolled', t.id === 'home' && S.c.layout === 'dock' && t.f.zone === 'continue');
     applyHomeFont();
     if (!sheet) renderHome(t);
@@ -1949,7 +1950,7 @@
     if (t.id !== 'home' || S.c.layout !== 'dock' || !mediaAvailable || Math.abs(ev.deltaY) < 5) return;
     ev.preventDefault();
     if (Date.now() - lastHomeWheel < 400) return;
-    if (ev.deltaY > 0 && t.f.zone === 'apps') { lastHomeWheel = Date.now(); press('down'); }
+    if (ev.deltaY > 0 && (t.f.zone === 'apps' || t.f.zone === 'continue')) { lastHomeWheel = Date.now(); press('down'); }
     else if (ev.deltaY < 0 && t.f.zone === 'continue') { lastHomeWheel = Date.now(); press('up'); }
   }, { passive: false });
   document.addEventListener('keyup', function (ev) { delete heldKeys[ev.keyCode]; });

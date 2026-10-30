@@ -12,11 +12,11 @@
 
   var BASE = 'http://127.0.0.1:8765';
   var BRANDS = { netflix: 'netflix', 'youtube.leanback.v4': 'youtube', amazon: 'primevideo', 'com.disney.disneyplus-prod': 'disneyplus', 'com.apple.appletv': 'appletv', 'com.webos.app.hdmi1': 'appletv', spotify: 'spotify' };
-  function request(path, payload, done) {
+  function request(path, payload, done, timeoutMs) {
     var x = new XMLHttpRequest(), finished = false;
     function finish(err, value) { if (!finished) { finished = true; done(err, value); } }
     x.open(payload === null ? 'GET' : 'POST', BASE + path, true);
-    x.timeout = 8000;
+    x.timeout = timeoutMs || 8000;
     x.onload = function () {
       var data;
       try { data = JSON.parse(x.responseText); } catch (e) { finish({message:'Invalid response from the TV service.'}); return; }
@@ -54,5 +54,8 @@
   window.FrameDevice={launchApp:launchApp,launch:function(id,done){launchApp(id,done);},apps:apps,
     art:function(done){launchApp('com.webos.app.homeconnect',done);},
     home:function(done){launchApp('org.webosbrew.hbchannel',done);},
-    settings:function(done){launchApp('com.palm.app.settings',done);}};
+    settings:function(done){launchApp('com.palm.app.settings',done);},
+    updateStatus:function(check,done){request('/api/update'+(check?'?check=1':''),null,done,12000);},
+    applyUpdate:function(done){request('/api/update',{},done,30000);},
+    rollbackUpdate:function(done){request('/api/update/rollback',{},done,15000);}};
 }());

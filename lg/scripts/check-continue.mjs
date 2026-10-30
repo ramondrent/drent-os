@@ -42,6 +42,16 @@ try{
   await p.evaluate(()=>{window.testDate='2027-01-01T00:00:00';window.dispatchEvent(new Event('focus'));});assert.equal(await p.locator('.home-date').textContent(),'Friday, 1 January 2027');
   await p.evaluate(()=>{window.Date=window.ClockNativeDate;window.dispatchEvent(new Event('focus'));});await p.keyboard.press('ArrowUp');await p.keyboard.press('ArrowUp');assert.equal(await p.evaluate(()=>ShoreQA.where().zone),'util');
   await p.evaluate(()=>ShoreQA.look({layout:'list'}));await p.waitForFunction(()=>ShoreQA.ready());await p.evaluate(()=>ShoreQA.scene('home'));await p.keyboard.press('ArrowRight');assert.equal(await p.evaluate(()=>ShoreQA.where().zone),'continue');await p.screenshot({path:`output/playwright/continue-list-${width}.png`});
+  await p.evaluate(()=>{ShoreQA.scene('settings');ShoreQA.activate('settings.group.layout');ShoreQA.activate('choice.media.hidden');});
+  assert.equal(await p.evaluate(()=>ShoreQA.state().committed.media),'hidden');
+  assert.equal(await p.evaluate(()=>document.querySelector('#continueWatching').hidden),true);
+  await p.evaluate(()=>ShoreQA.scene('home'));
+  await p.keyboard.press('ArrowRight');assert.equal(await p.evaluate(()=>ShoreQA.where().zone),'util');
+  await p.evaluate(()=>ShoreQA.look({layout:'dock'}));await p.waitForFunction(()=>ShoreQA.ready());
+  await p.keyboard.press('ArrowDown');assert.equal(await p.evaluate(()=>ShoreQA.where().zone),'apps');
+  await p.evaluate(()=>ShoreQA.look({media:'shown',layout:'list'}));await p.waitForFunction(()=>ShoreQA.ready());
+  assert.equal(await p.evaluate(()=>document.querySelector('#continueWatching').hidden),false);
+  await p.keyboard.press('ArrowRight');assert.equal(await p.evaluate(()=>ShoreQA.where().zone),'continue');
   playbackMode='app';await p.evaluate(()=>FrameContinue.refresh(true));await p.waitForFunction(()=>document.querySelector('#continueWatching .cw-badge').textContent==='Open Plex');
   playbackMode='unavailable';await p.evaluate(()=>FrameContinue.refresh(true));await p.waitForFunction(()=>document.querySelector('#continueWatching .cw-badge').textContent==='Player unavailable');
   playbackMode='resume';await p.evaluate(()=>FrameContinue.refresh(true));await p.waitForFunction(()=>document.querySelector('#continueWatching .cw-badge').textContent==='Resume');

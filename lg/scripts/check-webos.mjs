@@ -10,7 +10,8 @@ try {
   const page=await preview.browser.newPage({viewport:{width,height:width*9/16}});
   if (legacySpacing) await page.addInitScript(() => document.addEventListener('DOMContentLoaded', () => document.documentElement.classList.add('no-flex-gap')));
   page.on('pageerror',e=>errors.push(e.message));
-  let refuse=false;
+  let refuse=false,installedCommit='1111111111111111111111111111111111111111',canRollback=false;
+  const latestCommit='abcdef1234567890abcdef1234567890abcdef12';
   await page.route('http://127.0.0.1:8766/**',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({configured:true,items:[]})}));
   await page.route('http://127.0.0.1:8765/**',async route=>{
    const p=new URL(route.request().url()).pathname;
@@ -19,6 +20,9 @@ try {
    if(p==='/api/apps') body={apps:[{id:'com.webos.app.browser',title:'Web Browser'},{id:'com.webos.app.mediadiscovery',title:'Media Player'},{id:'com.webos.app.lifeonscreen',title:'LG Gallery+'},{id:'org.webosbrew.hbchannel',title:'Homebrew Channel'}]};
    if(p==='/api/inputs') body={devices:[{appId:'com.webos.app.hdmi1',port:1,label:'Apple OTT',subList:[{osdName:'Apple TV'}]},{appId:'com.webos.app.hdmi2',port:2,label:'HDMI 2'}]};
    if(p==='/api/launch'){launches.push(route.request().postDataJSON().id);if(refuse)body={returnValue:false,errorText:'Test launch refusal'};}
+   if(p==='/api/update'&&route.request().method()==='GET') body={returnValue:true,installed:{version:'0.6.1',commit:installedCommit,shortCommit:installedCommit.slice(0,7)},latest:{commit:latestCommit,shortCommit:latestCommit.slice(0,7),summary:'Add on-TV update'},updateAvailable:installedCommit!==latestCommit,canRollback};
+   if(p==='/api/update'&&route.request().method()==='POST'){installedCommit=latestCommit;canRollback=true;body={returnValue:true,updated:true,installed:{version:'0.6.1',commit:installedCommit,shortCommit:installedCommit.slice(0,7)},latest:{commit:latestCommit,shortCommit:latestCommit.slice(0,7),summary:'Add on-TV update'},updateAvailable:false,canRollback};}
+   if(p==='/api/update/rollback'&&route.request().method()==='POST'){installedCommit='1111111111111111111111111111111111111111';canRollback=false;body={returnValue:true,rolledBack:true,installed:{version:'0.6.1',commit:installedCommit,shortCommit:installedCommit.slice(0,7)},latest:{commit:latestCommit,shortCommit:latestCommit.slice(0,7),summary:'Add on-TV update'},updateAvailable:true,canRollback};}
    return route.fulfill({contentType:'application/json',headers:{'Access-Control-Allow-Origin':'*'},body:JSON.stringify(body)});
   });
   await page.goto(preview.baseURL+'/home/');
@@ -46,6 +50,15 @@ try {
   await page.keyboard.press('Escape');
   await page.evaluate(()=>ShoreQA.scene('settings'));
   await page.screenshot({path:`output/playwright/settings-${width}${legacySpacing ? "-legacy" : ""}.png`});
+  await page.evaluate(()=>{window.__RAMON_NO_RELOAD=true;ShoreQA.activate('settings.group.samsung');});
+  await page.waitForFunction(()=>ShoreQA.state().update && ShoreQA.state().update.updateAvailable===true);
+  assert.equal(await page.evaluate(()=>ShoreQA.where().focusAction),'samsung.update');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>ShoreQA.state().update.installed.shortCommit==='abcdef1' && ShoreQA.state().update.canRollback===true);
+  await page.keyboard.press('ArrowDown');
+  assert.equal(await page.evaluate(()=>ShoreQA.where().focusAction),'samsung.rollback');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(()=>ShoreQA.state().update.installed.shortCommit==='1111111' && ShoreQA.state().update.canRollback===false);
   await page.evaluate(()=>ShoreQA.look({wall:'alpine'}));
   await page.waitForFunction(()=>ShoreQA.ready() && ShoreQA.state().wall==='alpine');
   await page.reload();await page.waitForFunction(()=>window.ShoreQA && ShoreQA.ready());

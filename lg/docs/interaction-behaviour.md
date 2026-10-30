@@ -17,7 +17,7 @@ Settings opens a grouped overview: Background, Layout, Typography, Focus, Apps o
 | Group | Choices |
 | --- | --- |
 | Background | Photo, Light, Dark; Wallpaper and Rotation when Photo is active |
-| Layout | List or Dock; independent Text, Icons or Both choices for apps and Home controls |
+| Layout | List or Dock; independent Text, Icons or Both choices for apps and Home controls; Shown or Hidden for Plex shelves |
 | Typography | Manrope, Neue Montreal, Mori, Pangram Sans, Geist and Newsreader, when available |
 | Focus | Type or Glass; Soft, Frost or Clear tint material |
 | Apps on Home | Membership and arrangement editor |
@@ -114,3 +114,7 @@ With aerial mode configured, Home starts full-screen muted video after the confi
 ## LG port: automatic Plex player selection
 
 The media bridge checks installed native app IDs whenever rows refresh and again on OK. Official Plex (`cdp-30`) takes priority over PlxNative (`com.beb.plxnative`). Official Plex cards say **Open Plex** and open the app; title-level resume is not verified for that client. PlxNative retains selected-title resume/details. If neither is present, cards say **Player unavailable**, and OK explains which apps can be installed. Registry/launch errors stay on Home with a retryable error. Focus, aliases, order and image caching are unchanged. Progress still comes from the configured Plex server/profile, independently of the selected player.
+
+## LG port: on-TV software update and rollback
+
+Opening **Settings → TV** checks the local TV service (`GET /api/update?check=1`) for the installed commit (`version.json`) and the latest `main` commit on GitHub. When a newer commit is available (or no commit has been recorded yet), OK on **Install update** downloads the repository archive on the TV, preserves any local `app/assets/private-fonts/` files, backs up the previous frontend to `backup/app.prev`, stages `home-overlay/`, and reloads Home. When `backup/app.prev` exists, **Revert to previous version** restores it and reloads Home.

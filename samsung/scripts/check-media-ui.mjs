@@ -12,5 +12,12 @@ try{for(const width of [1920,1280]){
  await p.keyboard.press('Enter');await p.waitForFunction(()=>!ShoreQA.state().continueWatching.busy);
  const play=requests.find(u=>u.pathname==='/player/playback/playMedia');assert(play);assert.equal(play.searchParams.get('offset'),'45000');assert.equal(play.searchParams.get('token'),'temporary-test');assert.deepEqual(await p.evaluate(()=>launched),['kIciSQlYEM.plex']);
  await p.keyboard.press('Escape');assert.equal(await p.evaluate(()=>ShoreQA.where().zone),'apps');assert.match(await p.locator('.home-date').textContent(),/\d{4}/);
- await p.close();console.log(`PASS ${width}: direct Plex shelves, row navigation, series episode selection, resume offset, Samsung launch, no service`);
+ await p.evaluate(()=>{ShoreQA.scene('settings');ShoreQA.activate('settings.group.layout');ShoreQA.activate('choice.media.hidden');});
+ assert.equal(await p.evaluate(()=>ShoreQA.state().committed.media),'hidden');
+ assert.equal(await p.evaluate(()=>document.querySelector('#continueWatching').hidden),true);
+ await p.evaluate(()=>ShoreQA.scene('home'));
+ await p.keyboard.press('ArrowDown');assert.equal(await p.evaluate(()=>ShoreQA.where().zone),'apps');
+ await p.evaluate(()=>ShoreQA.look({media:'shown'}));await p.waitForFunction(()=>ShoreQA.ready());
+ assert.equal(await p.evaluate(()=>document.querySelector('#continueWatching').hidden),false);
+ await p.close();console.log(`PASS ${width}: direct Plex shelves, row navigation, hide/show setting, series episode selection, resume offset, Samsung launch, no service`);
 }}finally{await v.close();}

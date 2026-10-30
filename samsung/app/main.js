@@ -42,10 +42,10 @@
     newsreader: { name: 'Newsreader', family: 'Study Newsreader', display: 400, ui: 400, clock: 400 }
   };
   var PRIVATE_FONTS = window.CleanFramePrivateFontIDs || [], fontMetrics = {}, unavailableFonts = {}, widthCache = {}, fontsReady = false;
-  var LOOK_KEYS = ['bg', 'layout', 'apps', 'font', 'controls', 'focus', 'material'];
-  var LOOK_VALUES = { bg: ['dark', 'light', 'photo'], layout: ['list', 'dock'], apps: ['icons', 'both', 'text'], font: Object.keys(FONTS).filter(function (id) { return id === 'manrope' || PRIVATE_FONTS.indexOf(id) >= 0; }), controls: ['icons', 'both', 'text'], focus: ['type', 'glass'], material: ['soft', 'frost', 'tint'] };
-  var LOOK_NAMES = { bg: 'Background', layout: 'Layout', apps: 'Apps', font: 'Font', controls: 'Home controls', focus: 'Focus', material: 'Material' };
-  var VALUE_NAMES = { dark: 'Dark', light: 'Light', photo: 'Photo', list: 'List', dock: 'Dock', type: 'Type', glass: 'Glass', soft: 'Soft', frost: 'Frost', tint: 'Clear tint', icons: 'Icons', both: 'Icons and text', text: 'Text' };
+  var LOOK_KEYS = ['bg', 'layout', 'apps', 'font', 'controls', 'focus', 'material', 'media'];
+  var LOOK_VALUES = { bg: ['dark', 'light', 'photo'], layout: ['list', 'dock'], apps: ['icons', 'both', 'text'], font: Object.keys(FONTS).filter(function (id) { return id === 'manrope' || PRIVATE_FONTS.indexOf(id) >= 0; }), controls: ['icons', 'both', 'text'], focus: ['type', 'glass'], material: ['soft', 'frost', 'tint'], media: ['shown', 'hidden'] };
+  var LOOK_NAMES = { bg: 'Background', layout: 'Layout', apps: 'Apps', font: 'Font', controls: 'Home controls', focus: 'Focus', material: 'Material', media: 'Plex shelves' };
+  var VALUE_NAMES = { dark: 'Dark', light: 'Light', photo: 'Photo', list: 'List', dock: 'Dock', type: 'Type', glass: 'Glass', soft: 'Soft', frost: 'Frost', tint: 'Clear tint', icons: 'Icons', both: 'Icons and text', text: 'Text', shown: 'Shown', hidden: 'Hidden' };
   var UTIL = { art: ['Art Mode', 'art'], apps: ['All apps', 'apps'], arrange: ['Arrange', 'arrange'], settings: ['Settings', 'settings'] };
   var MSG = {
     leave: { title: 'Leave Home?', line: 'Open Samsung Home?', note: '', actions: [['stay', 'Stay'], ['samsung', 'Samsung Home']] }
@@ -84,7 +84,8 @@
     for (var i = 0; i < list.length; i++) if (list[i].toLowerCase() === v) return list[i];
     return fallback;
   }
-  function lookOf(c) { return { bg: c.bg, wall: c.wall, layout: c.layout, apps: c.apps, font: c.font, controls: c.controls, focus: c.focus, material: c.material }; }
+  function lookOf(c) { return { bg: c.bg, wall: c.wall, layout: c.layout, apps: c.apps, font: c.font, controls: c.controls, focus: c.focus, material: c.material, media: c.media || 'shown' }; }
+  function mediaShown(c) { c = c || S.c; return mediaAvailable && (!c || c.media !== 'hidden'); }
   function materialApplies(c) { c = c || S.c; return c.bg === 'photo' && (c.layout === 'dock' || c.focus === 'glass'); }
   function derivedTheme() { return S.c.layout === 'list' ? 'list' : 'shore'; }
 
@@ -363,6 +364,7 @@
       bg: pick(modern.bg, LOOK_VALUES.bg, legacyList ? 'dark' : 'photo'), layout: pick(modern.layout, LOOK_VALUES.layout, legacyList ? 'list' : 'dock'),
       apps: pick(modern.apps, LOOK_VALUES.apps, legacyList ? 'text' : 'both'), controls: pick(modern.controls, LOOK_VALUES.controls, 'icons'),
       focus: pick(modern.focus, LOOK_VALUES.focus, legacyList ? 'type' : 'glass'), material: pick(modern.material, LOOK_VALUES.material, 'soft'),
+      media: pick(modern.media || s.media, LOOK_VALUES.media, 'shown'),
       font: pick(modern.font, LOOK_VALUES.font, 'manrope'), wall: wall(modern.wall || s.wallpaper) ? modern.wall || s.wallpaper : WALLS[0].id,
       names: cleanNames(s.names), home: h, recent: recent, lastApp: h.indexOf(s.lastApp) >= 0 ? s.lastApp : h[0],
       mode: pick(s.mode, MODES.map(function (m) { return m.id; }), 'fixed')
@@ -551,15 +553,18 @@
 
   /* ---------- Home (browse) ---------- */
   V.home = {
+    norm: function (t) {
+      if (t.f.zone === 'continue' && !mediaShown()) { t.f.zone = 'apps'; if (Media.reset) Media.reset(); }
+    },
     key: function (t, k) {
       var f = t.f, h = S.c.home, U = utils(), x = axes(), i = ensureSel();
       if (f.zone === 'continue') {
-        if (k === 'back') { f.zone = 'apps'; if (Media.reset) Media.reset(); }
+        if (!mediaShown() || k === 'back') { f.zone = 'apps'; if (Media.reset) Media.reset(); }
         else if (k === 'up') { if (!Media.key(k)) f.zone = 'apps'; }
         else Media.key(k);
         return;
       }
-      if (mediaAvailable && f.zone === 'apps' && ((S.c.layout === 'dock' && k === 'down') || (S.c.layout === 'list' && k === 'right'))) { f.zone = 'continue'; return; }
+      if (mediaShown() && f.zone === 'apps' && ((S.c.layout === 'dock' && k === 'down') || (S.c.layout === 'list' && k === 'right'))) { f.zone = 'continue'; return; }
       if (S.c.layout === 'list') { listHomeKey(t, k, i, U); return; }
       if (f.zone === 'util') {
         f.u = clamp(f.u, 0, U.length - 1);
@@ -579,7 +584,7 @@
       else if (k === 'ok') launch(S.sel);
     },
     point: function (t, z, i) {
-      if (z === 'continue') { t.f.zone = 'continue'; Media.select(i); return; }
+      if (z === 'continue') { if (!mediaShown()) return; t.f.zone = 'continue'; Media.select(i); return; }
       if (z === 'util') { t.f.zone = 'util'; t.f.u = i; S.lastUtil = i; }
       else if (z === 'app') { t.f.zone = 'apps'; setSel(S.c.home[i]); }
       else if (z === 'empty') t.f.zone = 'apps';
@@ -893,7 +898,7 @@
   function settingsRows() {
     var n = S.c.home.length;
     return [{ id: 'background', label: 'Background', value: S.c.bg === 'photo' ? wall(S.c.wall).name : VALUE_NAMES[S.c.bg] },
-      { id: 'layout', label: 'Layout', value: VALUE_NAMES[S.c.layout] },
+      { id: 'layout', label: 'Layout', value: VALUE_NAMES[S.c.layout] + (S.c.media === 'hidden' ? ', Plex hidden' : '') },
       { id: 'typography', label: 'Typography', value: FONTS[S.c.font].name },
       { id: 'focus', label: 'Focus', value: VALUE_NAMES[S.c.focus] + (materialApplies() ? ', ' + VALUE_NAMES[S.c.material] : '') },
       { id: 'editor', label: 'Apps on Home', value: n + (n === 1 ? ' app' : ' apps') },
@@ -935,7 +940,8 @@
     if (t.group === 'layout') return [
       { id: 'layout', title: 'Layout', horizontal: true, items: options('layout', ['list', 'dock']) },
       { id: 'apps', title: 'App display', horizontal: true, items: options('apps', ['text', 'icons', 'both']) },
-      { id: 'controls', title: 'Home controls', horizontal: true, items: options('controls', ['text', 'icons', 'both']) }
+      { id: 'controls', title: 'Home controls', horizontal: true, items: options('controls', ['text', 'icons', 'both']) },
+      { id: 'media', title: 'Plex shelves', horizontal: true, items: options('media', ['shown', 'hidden']) }
     ];
     if (t.group === 'typography') return [{ id: 'font', title: '', items: options('font', LOOK_VALUES.font) }];
     if (t.group === 'focus') return [
@@ -1101,11 +1107,11 @@
     else stage.style.removeProperty('--clock-ink');
     if (!adaptive && shown.dockClockInk) stage.style.setProperty('--dock-clock-ink', shown.dockClockInk);
     else stage.style.removeProperty('--dock-clock-ink');
-    stage.classList.toggle('media-focus', t.id === 'home' && t.f.zone === 'continue');
+    stage.classList.toggle('media-focus', t.id === 'home' && mediaShown() && t.f.zone === 'continue');
     var mediaBlur = $('mediaBlur'), mediaBlurSrc = 'assets/materials/' + shown.id + '-field-frost.jpg';
     if (mediaBlur.getAttribute('src') !== mediaBlurSrc) mediaBlur.src = mediaBlurSrc;
     homeEl.style.setProperty('--media-scroll', (500 + (Media.state().row || 0) * 360) + 'px');
-    homeEl.classList.toggle('is-scrolled', t.id === 'home' && S.c.layout === 'dock' && t.f.zone === 'continue');
+    homeEl.classList.toggle('is-scrolled', t.id === 'home' && mediaShown() && S.c.layout === 'dock' && t.f.zone === 'continue');
     applyHomeFont();
     if (!sheet) renderHome(t);
     renderSheet(t, sheet);
@@ -1131,7 +1137,7 @@
 
   function renderHome(t) {
     var hs = homeState(t);
-    Media.render(hs.zone === 'continue', t.id === 'home', S.c.layout === 'list');
+    Media.render(mediaShown() && hs.zone === 'continue', t.id === 'home' && mediaShown(), S.c.layout === 'list');
     renderCaption(t, hs);
     renderUtils(hs);
     if (S.c.layout === 'list') renderList(hs);
@@ -1781,11 +1787,16 @@
     changed = Object.keys(target).some(function (key) { return target[key] !== S.c[key]; });
     cancelLook(); S.err = null; token = wallToken;
     function finish(bundle) {
-      var c = next(S.c.home.slice(), S.c.recent.slice()), fontChanged = target.font !== S.c.font, reflow = target.apps !== S.c.apps || target.controls !== S.c.controls || fontChanged, frame, fontFrame;
+      var c = next(S.c.home.slice(), S.c.recent.slice()), fontChanged = target.font !== S.c.font, mediaEnabled = target.media === 'shown' && S.c.media === 'hidden', reflow = target.apps !== S.c.apps || target.controls !== S.c.controls || fontChanged, frame, fontFrame;
       Object.keys(target).forEach(function (key) { c[key] = target[key]; });
       S.pending = null; S.wallPending = null;
       if (!opts.transient && changed && !write(c, 'Appearance')) { S.lookError = { type: 'save', patch: changes, row: opts.row || S.appearanceFocus, transient: false }; render(); syncRotation(); return; }
       if (opts.transient) S.c = c;
+      if (target.media === 'hidden' && S.stack && S.stack[0] && S.stack[0].f.zone === 'continue') {
+        S.stack[0].f.zone = 'apps';
+        if (Media.reset) Media.reset();
+      }
+      if (mediaEnabled) Media.refresh(false);
       if (reflow) { S.reflow = true; frame = ++reflowToken; }
       if (fontChanged) { S.fontSwitch = true; fontFrame = ++fontSwitchToken; }
       installBundle(bundle, target);
@@ -1947,7 +1958,7 @@
   var lastHomeWheel = 0;
   stage.addEventListener('wheel', function (ev) {
     var t = top();
-    if (t.id !== 'home' || S.c.layout !== 'dock' || !mediaAvailable || Math.abs(ev.deltaY) < 5) return;
+    if (t.id !== 'home' || S.c.layout !== 'dock' || !mediaShown() || Math.abs(ev.deltaY) < 5) return;
     ev.preventDefault();
     if (Date.now() - lastHomeWheel < 400) return;
     if (ev.deltaY > 0 && (t.f.zone === 'apps' || t.f.zone === 'continue')) { lastHomeWheel = Date.now(); press('down'); }

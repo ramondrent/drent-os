@@ -42,10 +42,10 @@
     newsreader: { name: 'Newsreader', family: 'Study Newsreader', display: 400, ui: 400, clock: 400 }
   };
   var PRIVATE_FONTS = window.CleanFramePrivateFontIDs || [], fontMetrics = {}, unavailableFonts = {}, widthCache = {}, fontsReady = false;
-  var LOOK_KEYS = ['bg', 'layout', 'apps', 'font', 'controls', 'focus', 'material'];
-  var LOOK_VALUES = { bg: ['dark', 'light', 'photo'], layout: ['list', 'dock'], apps: ['icons', 'both', 'text'], font: Object.keys(FONTS).filter(function (id) { return id === 'manrope' || PRIVATE_FONTS.indexOf(id) >= 0; }), controls: ['icons', 'both', 'text'], focus: ['type', 'glass'], material: ['soft', 'frost', 'tint'] };
-  var LOOK_NAMES = { bg: 'Background', layout: 'Layout', apps: 'Apps', font: 'Font', controls: 'Home controls', focus: 'Focus', material: 'Material' };
-  var VALUE_NAMES = { dark: 'Dark', light: 'Light', photo: 'Photo', list: 'List', dock: 'Dock', type: 'Type', glass: 'Glass', soft: 'Soft', frost: 'Frost', tint: 'Clear tint', icons: 'Icons', both: 'Icons and text', text: 'Text' };
+  var LOOK_KEYS = ['bg', 'layout', 'apps', 'font', 'controls', 'focus', 'material', 'media'];
+  var LOOK_VALUES = { bg: ['dark', 'light', 'photo'], layout: ['list', 'dock'], apps: ['icons', 'both', 'text'], font: Object.keys(FONTS).filter(function (id) { return id === 'manrope' || PRIVATE_FONTS.indexOf(id) >= 0; }), controls: ['icons', 'both', 'text'], focus: ['type', 'glass'], material: ['soft', 'frost', 'tint'], media: ['shown', 'hidden'] };
+  var LOOK_NAMES = { bg: 'Background', layout: 'Layout', apps: 'Apps', font: 'Font', controls: 'Home controls', focus: 'Focus', material: 'Material', media: 'Plex shelves' };
+  var VALUE_NAMES = { dark: 'Dark', light: 'Light', photo: 'Photo', list: 'List', dock: 'Dock', type: 'Type', glass: 'Glass', soft: 'Soft', frost: 'Frost', tint: 'Clear tint', icons: 'Icons', both: 'Icons and text', text: 'Text', shown: 'Shown', hidden: 'Hidden' };
   var UTIL = { art: ['Inputs', 'tv'], apps: ['All apps', 'apps'], arrange: ['Arrange', 'arrange'], settings: ['Settings', 'settings'] };
   var MSG = {
     leave: { title: 'Leave Home?', line: 'Open Launcher manager?', note: '', actions: [['stay', 'Stay'], ['samsung', 'Launcher manager']] }
@@ -84,7 +84,8 @@
     for (var i = 0; i < list.length; i++) if (list[i].toLowerCase() === v) return list[i];
     return fallback;
   }
-  function lookOf(c) { return { bg: c.bg, wall: c.wall, layout: c.layout, apps: c.apps, font: c.font, controls: c.controls, focus: c.focus, material: c.material }; }
+  function lookOf(c) { return { bg: c.bg, wall: c.wall, layout: c.layout, apps: c.apps, font: c.font, controls: c.controls, focus: c.focus, material: c.material, media: c.media || 'shown' }; }
+  function mediaShown(c) { c = c || S.c; return mediaAvailable && (!c || c.media !== 'hidden'); }
   function materialApplies(c) { c = c || S.c; return c.bg === 'photo' && (c.layout === 'dock' || c.focus === 'glass'); }
   function derivedTheme() { return S.c.layout === 'list' ? 'list' : 'shore'; }
 
@@ -368,6 +369,7 @@
       bg: pick(modern.bg, LOOK_VALUES.bg, legacyList ? 'dark' : 'photo'), layout: pick(modern.layout, LOOK_VALUES.layout, legacyList ? 'list' : 'dock'),
       apps: pick(modern.apps, LOOK_VALUES.apps, legacyList ? 'text' : 'both'), controls: pick(modern.controls, LOOK_VALUES.controls, 'icons'),
       focus: pick(modern.focus, LOOK_VALUES.focus, legacyList ? 'type' : 'glass'), material: pick(modern.material, LOOK_VALUES.material, 'soft'),
+      media: pick(modern.media || s.media, LOOK_VALUES.media, 'shown'),
       font: pick(modern.font, LOOK_VALUES.font, 'manrope'), wall: wall(modern.wall || s.wallpaper) ? modern.wall || s.wallpaper : WALLS[0].id,
       names: cleanNames(s.names), home: h, recent: recent, lastApp: h.indexOf(s.lastApp) >= 0 ? s.lastApp : h[0],
       mode: pick(s.mode, MODES.map(function (m) { return m.id; }), 'fixed')
@@ -514,6 +516,81 @@
     });
   }
 
+  var updateState = {
+    checking: false, installing: false, rollingBack: false,
+    installed: null, latest: null, updateAvailable: false, canRollback: false,
+    error: null, notice: null
+  };
+  function refreshUpdate(check) {
+    if (!FrameDevice.updateStatus || updateState.checking || updateState.installing || updateState.rollingBack) return;
+    updateState.checking = true;
+    updateState.error = null;
+    if (check) updateState.notice = null;
+    render();
+    FrameDevice.updateStatus(!!check, function (err, data) {
+      updateState.checking = false;
+      if (err) {
+        updateState.error = err.detail || err.message || 'Could not check for updates.';
+        render();
+        return;
+      }
+      updateState.installed = data.installed || null;
+      updateState.latest = data.latest || null;
+      updateState.updateAvailable = !!data.updateAvailable;
+      updateState.canRollback = !!data.canRollback;
+      updateState.error = data.checkError || null;
+      if (check && !updateState.error && !updateState.updateAvailable && updateState.installed && updateState.installed.commit) {
+        updateState.notice = 'Ramon OS is up to date (' + updateState.installed.shortCommit + ').';
+      }
+      norm(); render();
+    });
+  }
+  function installUpdate() {
+    if (!FrameDevice.applyUpdate || updateState.checking || updateState.installing || updateState.rollingBack) return;
+    updateState.installing = true;
+    updateState.error = null;
+    updateState.notice = 'Downloading and staging update from GitHub…';
+    render();
+    FrameDevice.applyUpdate(function (err, data) {
+      updateState.installing = false;
+      if (err) {
+        updateState.error = err.detail || err.message || 'Could not install the update.';
+        updateState.notice = null;
+        render();
+        return;
+      }
+      updateState.installed = data.installed || updateState.installed;
+      updateState.latest = data.latest || updateState.latest;
+      updateState.updateAvailable = false;
+      updateState.canRollback = !!data.canRollback;
+      updateState.notice = 'Updated to ' + (updateState.installed && updateState.installed.shortCommit || 'latest') + '. Reloading launcher…';
+      norm(); render();
+      setTimeout(function () { if (!window.__RAMON_NO_RELOAD) window.location.reload(); }, 350);
+    });
+  }
+  function rollbackUpdate() {
+    if (!FrameDevice.rollbackUpdate || !updateState.canRollback || updateState.checking || updateState.installing || updateState.rollingBack) return;
+    updateState.rollingBack = true;
+    updateState.error = null;
+    updateState.notice = 'Restoring previous version…';
+    render();
+    FrameDevice.rollbackUpdate(function (err, data) {
+      updateState.rollingBack = false;
+      if (err) {
+        updateState.error = err.detail || err.message || 'Could not restore the previous version.';
+        updateState.notice = null;
+        render();
+        return;
+      }
+      updateState.installed = data.installed || null;
+      updateState.updateAvailable = !!data.updateAvailable;
+      updateState.canRollback = !!data.canRollback;
+      updateState.notice = 'Previous version restored. Reloading launcher…';
+      norm(); render();
+      setTimeout(function () { if (!window.__RAMON_NO_RELOAD) window.location.reload(); }, 350);
+    });
+  }
+
   /* ---------- Navigation targets ---------- */
   function utils() { return ['art', 'apps', 'settings']; }
   /* prev/next run along the apps; out goes to the controls, inn comes back (or to a per-app action). */
@@ -530,8 +607,9 @@
   function openSettings() { push({ id: 'settings', f: { id: S.settingsFocus } }); }
   function openAppearance(group) {
     var axis = { background: 'bg', layout: 'layout', typography: 'font', focus: 'focus' }[group];
-    var action = S.detailFocus[group] || (axis ? 'choice.' + axis + '.' + S.c[axis] : group === 'rotation' ? 'rotation.' + S.c.mode : 'samsung.home');
+    var action = S.detailFocus[group] || (axis ? 'choice.' + axis + '.' + S.c[axis] : group === 'rotation' ? 'rotation.' + S.c.mode : 'samsung.update');
     push({ id: 'appearance', group: group, f: { action: action } });
+    if (group === 'samsung') refreshUpdate(true);
   }
   function openMessage(key) { push({ id: 'message', msg: key, f: { b: 0 } }); }
   function openApps() {
@@ -556,15 +634,18 @@
 
   /* ---------- Home (browse) ---------- */
   V.home = {
+    norm: function (t) {
+      if (t.f.zone === 'continue' && !mediaShown()) { t.f.zone = 'apps'; if (Media.reset) Media.reset(); }
+    },
     key: function (t, k) {
       var f = t.f, h = S.c.home, U = utils(), x = axes(), i = ensureSel();
       if (f.zone === 'continue') {
-        if (k === 'back') { f.zone = 'apps'; if (Media.reset) Media.reset(); }
+        if (!mediaShown() || k === 'back') { f.zone = 'apps'; if (Media.reset) Media.reset(); }
         else if (k === 'up') { if (!Media.key(k)) f.zone = 'apps'; }
         else Media.key(k);
         return;
       }
-      if (mediaAvailable && f.zone === 'apps' && ((S.c.layout === 'dock' && k === 'down') || (S.c.layout === 'list' && k === 'right'))) { f.zone = 'continue'; return; }
+      if (mediaShown() && f.zone === 'apps' && ((S.c.layout === 'dock' && k === 'down') || (S.c.layout === 'list' && k === 'right'))) { f.zone = 'continue'; return; }
       if (S.c.layout === 'list') { listHomeKey(t, k, i, U); return; }
       if (f.zone === 'util') {
         f.u = clamp(f.u, 0, U.length - 1);
@@ -584,7 +665,7 @@
       else if (k === 'ok') launch(S.sel);
     },
     point: function (t, z, i) {
-      if (z === 'continue') { t.f.zone = 'continue'; Media.select(i); return; }
+      if (z === 'continue') { if (!mediaShown()) return; t.f.zone = 'continue'; Media.select(i); return; }
       if (z === 'util') { t.f.zone = 'util'; t.f.u = i; S.lastUtil = i; }
       else if (z === 'app') { t.f.zone = 'apps'; setSel(S.c.home[i]); }
       else if (z === 'empty') t.f.zone = 'apps';
@@ -898,12 +979,12 @@
   function settingsRows() {
     var n = S.c.home.length;
     return [{ id: 'background', label: 'Background', value: S.c.bg === 'photo' ? wall(S.c.wall).name : VALUE_NAMES[S.c.bg] },
-      { id: 'layout', label: 'Layout', value: VALUE_NAMES[S.c.layout] },
+      { id: 'layout', label: 'Layout', value: VALUE_NAMES[S.c.layout] + (S.c.media === 'hidden' ? ', Plex hidden' : '') },
       { id: 'typography', label: 'Typography', value: FONTS[S.c.font].name },
       { id: 'focus', label: 'Focus', value: VALUE_NAMES[S.c.focus] + (materialApplies() ? ', ' + VALUE_NAMES[S.c.material] : '') },
       { id: 'editor', label: 'Apps on Home', value: n + (n === 1 ? ' app' : ' apps') },
       { id: 'names', label: 'App names', value: 'Rename apps in this launcher' },
-      { id: 'samsung', label: 'TV', value: 'Home and TV settings' }];
+      { id: 'samsung', label: 'TV', value: updateState.updateAvailable && updateState.latest ? 'Update available (' + updateState.latest.shortCommit + ')' : 'Updates, Home and TV settings' }];
   }
   function settingsIds() { return settingsRows().map(function (r) { return r.id; }); }
   V.settings = {
@@ -940,7 +1021,8 @@
     if (t.group === 'layout') return [
       { id: 'layout', title: 'Layout', horizontal: true, items: options('layout', ['list', 'dock']) },
       { id: 'apps', title: 'App display', horizontal: true, items: options('apps', ['text', 'icons', 'both']) },
-      { id: 'controls', title: 'Home controls', horizontal: true, items: options('controls', ['text', 'icons', 'both']) }
+      { id: 'controls', title: 'Home controls', horizontal: true, items: options('controls', ['text', 'icons', 'both']) },
+      { id: 'media', title: 'Plex shelves', horizontal: true, items: options('media', ['shown', 'hidden']) }
     ];
     if (t.group === 'typography') return [{ id: 'font', title: '', items: options('font', LOOK_VALUES.font) }];
     if (t.group === 'focus') return [
@@ -950,10 +1032,34 @@
     ];
     if (t.group === 'rotation') return [{ id: 'mode', title: '', items: options('mode', MODES.map(function (m) { return m.id; }), flat),
       reason: flat ? 'Choose Photo in Background to use rotation.' : 'Timed changes pause while Settings or another panel is open.' }];
-    return [{ id: 'samsung', title: '', items: [
-      { action: 'samsung.home', label: 'Launcher manager', description: 'Open the launcher manager and recovery controls' },
-      { action: 'samsung.settings', label: 'TV settings', description: 'Picture, sound and network settings' }
-    ] }];
+    var canInstall = !!(updateState.updateAvailable || (updateState.latest && (!updateState.installed || !updateState.installed.commit)));
+    var upLabel = updateState.installing ? 'Updating Ramon OS…'
+      : updateState.checking ? 'Checking for updates…'
+      : canInstall && updateState.latest ? 'Install update (' + updateState.latest.shortCommit + ')'
+      : 'Check for updates';
+    var instText = updateState.installed
+      ? 'Installed: ' + (updateState.installed.version || '0.6.1') + (updateState.installed.shortCommit ? ' (' + updateState.installed.shortCommit + ')' : '')
+      : 'Installed: 0.6.1';
+    var upDesc = updateState.error ? updateState.error
+      : updateState.notice ? updateState.notice
+      : canInstall && updateState.latest ? instText + ' → ' + (updateState.latest.summary || updateState.latest.shortCommit)
+      : updateState.latest ? instText + ' · Up to date with GitHub (' + updateState.latest.shortCommit + ')'
+      : instText + ' · Pull latest main branch from GitHub';
+    var updateItems = [{ action: 'samsung.update', label: upLabel, description: upDesc }];
+    if (updateState.canRollback) {
+      updateItems.push({
+        action: 'samsung.rollback',
+        label: updateState.rollingBack ? 'Restoring previous version…' : 'Revert to previous version',
+        description: 'Restore the previous installed Ramon OS build'
+      });
+    }
+    return [
+      { id: 'update', title: 'Ramon OS update', items: updateItems },
+      { id: 'samsung', title: 'System', items: [
+        { action: 'samsung.home', label: 'Launcher manager', description: 'Open the launcher manager and recovery controls' },
+        { action: 'samsung.settings', label: 'TV settings', description: 'Picture, sound and network settings' }
+      ] }
+    ];
   }
   function detailRows(t) {
     var rows = [[{ action: 'settings.back', label: t.group === 'rotation' ? 'Background' : 'Settings' }]];
@@ -997,6 +1103,11 @@
     else if (item.axis) { patch[item.axis] = item.value; setLook(patch, { row: item.axis }); }
     else if (item.action === 'background.wallpaper') openWallpaper();
     else if (item.action === 'background.rotation') openAppearance('rotation');
+    else if (item.action === 'samsung.update') {
+      if (updateState.updateAvailable || (updateState.latest && (!updateState.installed || !updateState.installed.commit))) installUpdate();
+      else refreshUpdate(true);
+    }
+    else if (item.action === 'samsung.rollback') rollbackUpdate();
     else if (item.action === 'samsung.home') perform('Launcher manager', FrameDevice.home);
     else if (item.action === 'samsung.settings') perform('TV settings', FrameDevice.settings);
   }
@@ -1106,11 +1217,11 @@
     else stage.style.removeProperty('--clock-ink');
     if (!adaptive && shown.dockClockInk) stage.style.setProperty('--dock-clock-ink', shown.dockClockInk);
     else stage.style.removeProperty('--dock-clock-ink');
-    stage.classList.toggle('media-focus', t.id === 'home' && t.f.zone === 'continue');
+    stage.classList.toggle('media-focus', t.id === 'home' && mediaShown() && t.f.zone === 'continue');
     var mediaBlur = $('mediaBlur'), mediaBlurSrc = 'assets/materials/' + shown.id + '-field-frost.jpg';
     if (mediaBlur.getAttribute('src') !== mediaBlurSrc) mediaBlur.src = mediaBlurSrc;
     homeEl.style.setProperty('--media-scroll', (500 + (Media.state().row || 0) * 360) + 'px');
-    homeEl.classList.toggle('is-scrolled', t.id === 'home' && S.c.layout === 'dock' && t.f.zone === 'continue');
+    homeEl.classList.toggle('is-scrolled', t.id === 'home' && mediaShown() && S.c.layout === 'dock' && t.f.zone === 'continue');
     applyHomeFont();
     if (!sheet) renderHome(t);
     renderSheet(t, sheet);
@@ -1136,7 +1247,7 @@
 
   function renderHome(t) {
     var hs = homeState(t);
-    Media.render(hs.zone === 'continue', t.id === 'home', S.c.layout === 'list');
+    Media.render(mediaShown() && hs.zone === 'continue', t.id === 'home' && mediaShown(), S.c.layout === 'list');
     renderCaption(t, hs);
     renderUtils(hs);
     if (S.c.layout === 'list') renderList(hs);
@@ -1516,9 +1627,13 @@
     else if (error) {
       status = '<p class="setting-error">' + (error.type === 'save' ? 'Couldn’t save this change.' : error.type === 'font' ? 'Couldn’t load ' + esc(FONTS[error.font].name) + '.' : 'Couldn’t load this appearance.') + ' Your current choice is kept.</p>'
         + command({ action: 'settings.retry', label: 'Try again' }, '<span>Try again</span>', 'setting-retry');
+    } else if (t.group === 'samsung' && updateState.error) {
+      status = '<p class="setting-error">' + esc(updateState.error) + '</p>';
+    } else if (t.group === 'samsung' && updateState.notice) {
+      status = '<p>' + esc(updateState.notice) + '</p>';
     }
     setHTML(appearanceStatus, status);
-    hint = selected.disabled ? '' : selected.action === 'settings.back' ? 'Return to ' + (t.group === 'rotation' ? 'Background' : 'Settings') : selected.action === 'settings.retry' ? 'Retry this change' : selected.axis ? 'Apply selected setting' : selected.action === 'background.wallpaper' ? 'Choose a wallpaper' : selected.action === 'background.rotation' ? 'Choose a rotation interval' : 'Open on the TV';
+    hint = selected.disabled ? '' : selected.action === 'settings.back' ? 'Return to ' + (t.group === 'rotation' ? 'Background' : 'Settings') : selected.action === 'settings.retry' ? 'Retry this change' : selected.axis ? 'Apply selected setting' : selected.action === 'background.wallpaper' ? 'Choose a wallpaper' : selected.action === 'background.rotation' ? 'Choose a rotation interval' : selected.action === 'samsung.update' ? (updateState.updateAvailable || (updateState.latest && (!updateState.installed || !updateState.installed.commit)) ? 'Download and install update' : 'Check GitHub for updates') : selected.action === 'samsung.rollback' ? 'Restore previous version' : 'Open on the TV';
     setHTML(appearanceDesc, hint ? '<span class="remote-key">OK</span><span>' + esc(hint) + '</span>' : '');
   }
   function renderWallpaper(t) {
@@ -1786,11 +1901,16 @@
     changed = Object.keys(target).some(function (key) { return target[key] !== S.c[key]; });
     cancelLook(); S.err = null; token = wallToken;
     function finish(bundle) {
-      var c = next(S.c.home.slice(), S.c.recent.slice()), fontChanged = target.font !== S.c.font, reflow = target.apps !== S.c.apps || target.controls !== S.c.controls || fontChanged, frame, fontFrame;
+      var c = next(S.c.home.slice(), S.c.recent.slice()), fontChanged = target.font !== S.c.font, mediaEnabled = target.media === 'shown' && S.c.media === 'hidden', reflow = target.apps !== S.c.apps || target.controls !== S.c.controls || fontChanged, frame, fontFrame;
       Object.keys(target).forEach(function (key) { c[key] = target[key]; });
       S.pending = null; S.wallPending = null;
       if (!opts.transient && changed && !write(c, 'Appearance')) { S.lookError = { type: 'save', patch: changes, row: opts.row || S.appearanceFocus, transient: false }; render(); syncRotation(); return; }
       if (opts.transient) S.c = c;
+      if (target.media === 'hidden' && S.stack && S.stack[0] && S.stack[0].f.zone === 'continue') {
+        S.stack[0].f.zone = 'apps';
+        if (Media.reset) Media.reset();
+      }
+      if (mediaEnabled) Media.refresh(false);
       if (reflow) { S.reflow = true; frame = ++reflowToken; }
       if (fontChanged) { S.fontSwitch = true; fontFrame = ++fontSwitchToken; }
       installBundle(bundle, target);
@@ -1952,7 +2072,7 @@
   var lastHomeWheel = 0;
   stage.addEventListener('wheel', function (ev) {
     var t = top();
-    if (t.id !== 'home' || S.c.layout !== 'dock' || !mediaAvailable || Math.abs(ev.deltaY) < 5) return;
+    if (t.id !== 'home' || S.c.layout !== 'dock' || !mediaShown() || Math.abs(ev.deltaY) < 5) return;
     ev.preventDefault();
     if (Date.now() - lastHomeWheel < 400) return;
     if (ev.deltaY > 0 && (t.f.zone === 'apps' || t.f.zone === 'continue')) { lastHomeWheel = Date.now(); press('down'); }
@@ -1975,6 +2095,12 @@
     out.committed = S.c; out.shown = S.shown; out.pending = S.pending; out.view = t.id; out.selected = S.sel;
     out.focusAction = focusedAction(); out.writes = S.writes; out.failedWrites = S.failed; out.error = S.err;
     out.continueWatching = Media.state();
+    out.update = {
+      checking: updateState.checking, installing: updateState.installing, rollingBack: updateState.rollingBack,
+      installed: updateState.installed, latest: updateState.latest,
+      updateAvailable: updateState.updateAvailable, canRollback: updateState.canRollback,
+      error: updateState.error, notice: updateState.notice
+    };
     out.catalog = { loading: catalog.loading, loaded: catalog.loaded, error: catalog.error, ids: ALPHA.slice() };
     out.fonts = { available: LOOK_VALUES.font.slice(), loaded: Object.keys(fontMetrics).filter(function (id) { return !fontMetrics[id].fallback; }), baselineFallback: !!(fontMetrics.manrope && fontMetrics.manrope.fallback), error: S.lookError && S.lookError.type === 'font' ? S.lookError : null };
     out.rotation = { activeMs: activeMs + (activeSince ? Date.now() - activeSince : 0), active: !!activeSince };

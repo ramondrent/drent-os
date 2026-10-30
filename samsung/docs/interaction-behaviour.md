@@ -17,7 +17,7 @@ Settings opens a grouped overview: Background, Layout, Typography, Focus, Apps o
 | Group | Choices |
 | --- | --- |
 | Background | Photo, Light, Dark; Wallpaper and Rotation when Photo is active |
-| Layout | List or Dock; independent Text, Icons or Both choices for apps and Home controls |
+| Layout | List or Dock; independent Text, Icons or Both choices for apps and Home controls; Shown or Hidden for Plex shelves |
 | Typography | Manrope, Neue Montreal, Mori, Pangram Sans, Geist and Newsreader, when available |
 | Focus | Type or Glass; Soft, Frost or Clear tint material |
 | Apps on Home | Membership and arrangement editor |

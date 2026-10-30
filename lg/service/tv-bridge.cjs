@@ -8,7 +8,7 @@ const cp = require('child_process');
 const urlMod = require('url');
 
 const PORT = 8765;
-const DEFAULT_ROOT = '/media/developer/ramon-os';
+const DEFAULT_ROOT = fs.existsSync('/media/developer/ramon-os') ? '/media/developer/ramon-os' : '/media/developer/cleanyourtv';
 const DEFAULT_REPO = 'ramondrent/ramon-os';
 const DEFAULT_BRANCH = 'main';
 const ENV = Object.assign({}, process.env, {
@@ -268,6 +268,9 @@ function createTvBridge(options) {
         '  [ -f "$R/app/assets/fonts.css" ] && cp -p "$R/app/assets/fonts.css" "$R/app.next/assets/fonts.css" || true',
         '  [ -f "$R/app/assets/font-catalog.js" ] && cp -p "$R/app/assets/font-catalog.js" "$R/app.next/assets/font-catalog.js" || true',
         'fi',
+        'if [ -f "$R/app/office-defaults.js" ]; then',
+        '  cp -p "$R/app/office-defaults.js" "$R/app.next/office-defaults.js"',
+        'fi',
         'find "$R/app.next" -type d -exec chmod 755 {} \\;',
         'find "$R/app.next" -type f -exec chmod 644 {} \\;',
         'if [ -d "$R/app" ] && [ -f "$R/app/index.html" ]; then',
@@ -286,6 +289,13 @@ function createTvBridge(options) {
       ].join('\n');
 
       await execShell(installScript, [rootDir, lgRoot, stageDir], 20000);
+      if (fs.existsSync(path.join(rootDir, 'app/office-defaults.js'))) {
+        const idxPath = path.join(rootDir, 'app/index.html');
+        const idxHtml = fs.readFileSync(idxPath, 'utf8');
+        if (idxHtml.indexOf('office-defaults.js') < 0) {
+          fs.writeFileSync(idxPath, idxHtml.replace('<script src="main.js"></script>', '<script src="office-defaults.js"></script>\n<script src="main.js"></script>'));
+        }
+      }
       fs.writeFileSync(path.join(rootDir, 'version.json'), JSON.stringify(newVersion, null, 2) + '\n');
       await runStage();
       setTimeout(function () { runReload(); }, 250);

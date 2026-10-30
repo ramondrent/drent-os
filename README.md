@@ -48,10 +48,10 @@ Device credentials, certificates, SSH keys, addresses, account tokens, SDK insta
 
 The owner has used both launchers on the named TVs. LG app naming, navigation, landscape layout, custom icons, and the earlier Infuse resume flow received owner feedback. The replacement native Plex resume integration has passed local tests and was installed; visible resume confirmation is still pending. The scroll/glass registration fix also awaits owner confirmation. The owner confirmed aerial playback after 60 seconds, remote wake-up, and the three Plex rows on the LG. The subsequent tighter spacing and blurred media backdrop are installed and await visual feedback.
 
-This is a personal source repository, not a universal installer or replacement TV firmware. LG uses an existing rooted CleanYourTV installation; Samsung uses a signed Tizen application. Existing native Home assignments are installation-specific.
+This is a personal source repository, not a universal installer or replacement TV firmware. LG uses a self-contained Ramon OS service and Home bind-mount on a rooted webOS TV; Samsung uses a signed Tizen application. Existing native Home assignments are installation-specific.
 
 ## Credits and licensing
 
 Original CleanFrame code is MIT © Nathan Clark; the original notice is retained in [LICENSE](LICENSE). This fork adds Ramon's platform adaptations and customization. Third-party fonts, photos, and logos retain their own terms: [LG notices](lg/THIRD_PARTY_NOTICES.md), [Samsung notices](samsung/THIRD_PARTY_NOTICES.md).
 
-The personal NPO Start and KIJK artwork has no asserted open redistribution licence; review or replace it before making this repository public. Brand marks identify apps and do not imply endorsement. The native Plex client and CleanYourTV backend are separate projects, not bundled or claimed as original work here.
+The personal NPO Start and KIJK artwork has no asserted open redistribution licence; review or replace it before making this repository public. Brand marks identify apps and do not imply endorsement. The native Plex client is a separate project, not bundled or claimed as original work here.

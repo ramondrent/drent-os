@@ -110,3 +110,7 @@ Continue Watching now launches `com.beb.plxnative` locally with `params.plex` co
 Down from Continue Watching reaches recently added movies, then TV shows. Up returns through those rows; Back returns to apps. New titles open their detail page in Plex. Continue Watching still resumes playback. The Home scroll and glass registration follow the selected row.
 
 With aerial mode configured, Home starts full-screen muted video after the configured inactivity period. The first remote input wakes Home without navigation. Settings, other apps and hidden Home never start aerials. Failed or stalled playback restores Home and leaves the system screensaver intact.
+
+## LG port: automatic Plex player selection
+
+The media bridge checks installed native app IDs whenever rows refresh and again on OK. Official Plex (`cdp-30`) takes priority over PlxNative (`com.beb.plxnative`). Official Plex cards say **Open Plex** and open the app; title-level resume is not verified for that client. PlxNative retains selected-title resume/details. If neither is present, cards say **Player unavailable**, and OK explains which apps can be installed. Registry/launch errors stay on Home with a retryable error. Focus, aliases, order and image caching are unchanged. Progress still comes from the configured Plex server/profile, independently of the selected player.

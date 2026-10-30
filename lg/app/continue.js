@@ -26,7 +26,7 @@
    if(!items.length)html+='<button class="cw-empty" data-z="continue" data-i="'+(n*100)+'" data-action="continue.retry"><span class="cw-empty-title"></span><small></small></button>';
    else {
     html+='<div class="cw-viewport"><div class="cw-track">';
-    items.forEach(function(item,cardIndex){html+='<button class="cw-card" data-z="continue" data-i="'+(n*100+cardIndex)+'" data-action="continue.'+esc(item.id)+'" aria-label="'+esc(item.title+' '+item.subtitle)+'"><div class="cw-art">'+(item.image?'<img src="'+base+esc(item.image)+'" alt="">':'')+'<span class="cw-badge">'+(n?'Details':item.progress>0?'Resume':'Up next')+'</span><span class="cw-progress"><i style="width:'+Math.round(item.progress*100)+'%"></i></span></div><strong>'+esc(item.title)+'</strong><span class="cw-subtitle">'+esc(item.subtitle)+'</span></button>';});
+    items.forEach(function(item,cardIndex){html+='<button class="cw-card" data-z="continue" data-i="'+(n*100+cardIndex)+'" data-action="continue.'+esc(item.id)+'" aria-label="'+esc(item.title+' '+item.subtitle)+'"><div class="cw-art">'+(item.image?'<img src="'+base+esc(item.image)+'" alt="">':'')+'<span class="cw-badge">'+esc(item.playbackMode==='app'?'Open Plex':item.playbackMode==='unavailable'?'Player unavailable':n?'Details':item.progress>0?'Resume':'Up next')+'</span><span class="cw-progress"><i style="width:'+Math.round(item.progress*100)+'%"></i></span></div><strong>'+esc(item.title)+'</strong><span class="cw-subtitle">'+esc(item.subtitle)+'</span></button>';});
     html+='</div></div>';
    }
    html+='<p class="cw-status" aria-live="polite"></p>';root.innerHTML=html;

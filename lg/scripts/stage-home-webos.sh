@@ -1,7 +1,10 @@
 #!/bin/sh
 set -e
-L=/media/developer/cleanyourtv
+L=/media/developer/ramon-os
 S=$L/home-overlay
 mkdir -p "$S"
 cp -R "$L/app/." "$S/"
-node "$L/jtool.js" stage "$L/backup/home-appinfo.orig.json" "$S/appinfo.json"
+node "$L/stage-home.cjs" "$L/backup/home-appinfo.orig.json" "$S/appinfo.json"
+# Home runs outside the root service's private configuration directory.
+find "$S" -type d -exec chmod 755 {} \;
+find "$S" -type f -exec chmod 644 {} \;

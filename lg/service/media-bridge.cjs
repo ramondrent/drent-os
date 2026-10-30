@@ -1,10 +1,12 @@
-/* Local-only Plex/PlxNative bridge. Credentials never enter frontend responses. Node 16+. */
+/* Local-only Plex/PlxNative bridge. Credentials never enter frontend responses. Node 8.12+. */
 'use strict';
 const http=require('http'),https=require('https'),fs=require('fs');
+const URL=require('url').URL,URLSearchParams=require('url').URLSearchParams;
 function request(base,path,headers={},body=null,binary=false) {
  return new Promise((resolve,reject)=>{
   const url=new URL(path,base);const b=body===null?null:Buffer.from(JSON.stringify(body));
-  const req=(url.protocol==='https:'?https:http).request(url,{method:b?'POST':'GET',headers:{...headers,...(b?{'Content-Type':'application/json','Content-Length':b.length}:{})}},res=>{
+  const options=Object.assign(require('url').parse(url.href),{method:b?'POST':'GET',headers:{...headers,...(b?{'Content-Type':'application/json','Content-Length':b.length}:{})}});
+  const req=(url.protocol==='https:'?https:http).request(options,res=>{
    const chunks=[];let size=0;
    res.on('data',c=>{size+=c.length;if(size>8*1024*1024)res.destroy(new Error('Response too large'));else chunks.push(c);});
    res.on('error',reject);res.on('end',()=>{if(res.statusCode<200||res.statusCode>=300)return reject(new Error('Upstream HTTP '+res.statusCode));
@@ -12,15 +14,29 @@ function request(base,path,headers={},body=null,binary=false) {
   });req.setTimeout(8000,()=>req.destroy(new Error('Request timed out')));req.on('error',reject);if(b)req.write(b);req.end();
  });
 }
-function launchPlxNative(params){
+// Query the local app registry at each handoff: app names and Home aliases are not IDs.
+function luna(method,payload){
  return new Promise((resolve,reject)=>{
-  require('child_process').execFile('/usr/bin/luna-send',['-n','1','luna://com.webos.applicationManager/launch',JSON.stringify({id:'com.beb.plxnative',params:{plex:params}})],{timeout:10000,maxBuffer:65536},(err,stdout)=>{
-   if(err)return reject(new Error('PlxNative launch failed'));
-   try{const result=JSON.parse(stdout);if(!result.returnValue)throw new Error('Launch rejected');resolve();}catch(e){reject(new Error('PlxNative launch failed'));}
+  require('child_process').execFile('/bin/sh',['-c','/usr/bin/luna-send -n 1 -w 5000 -f "$1" "$2" </dev/null','sh','luna://com.webos.applicationManager/'+method,JSON.stringify(payload)],{timeout:8000,maxBuffer:4*1024*1024},(err,stdout)=>{
+   if(err)return reject(new Error('TV app service unavailable'));
+   try{const result=JSON.parse(stdout);if(!result.returnValue)throw new Error('Request rejected');resolve(result);}catch(e){reject(new Error('TV app request failed'));}
   });
+  // Some CX luna-send builds require /dev/null, not an ended stdin pipe.
+  // Payload is a positional shell argument, never interpolated into shell code.
  });
 }
-function createBridge(config,call=request,launch=launchPlxNative){
+function launchApp(payload){return luna('launch',payload);}
+function installedApps(){return luna('listApps',{}).then(data=>{if(!Array.isArray(data.apps))throw new Error('Invalid app registry');return data.apps;});}
+function selectPlayer(apps){
+ if(!Array.isArray(apps))throw new Error('Invalid app registry');
+ if(apps.some(app=>app.id==='cdp-30'))return {id:'cdp-30',name:'Plex',mode:'app'};
+ if(apps.some(app=>app.id==='com.beb.plxnative'))return {id:'com.beb.plxnative',name:'PlxNative',mode:'resume'};
+ return null;
+}
+function createBridge(config,call=request,launch=launchApp,discover=installedApps){
+ async function player(){try{return {player:selectPlayer(await discover()),playerError:null};}catch(e){return {player:null,playerError:'Unable to check installed Plex apps. Try again.'};}}
+ async function capabilities(){const state=await player();return {...state,playbackConfigured:!!state.player};}
+ const describeItems=(items,state)=>items.map(item=>({...item,playable:!!state.player,player:state.player&&state.player.name,playbackMode:state.player?state.player.mode:'unavailable'}));
  const ph={'Accept':'application/json','X-Plex-Token':config.plexToken,'X-Plex-Client-Identifier':config.plexClient};
  let cache=null,at=0,inflight=null,playing=false;let serverId=null;const artCache=new Map();
  const plex=path=>call(config.plexUrl,path,ph);
@@ -36,7 +52,7 @@ function createBridge(config,call=request,launch=launchPlxNative){
     const duration=Number(i.duration)||0,offset=Number(i.viewOffset)||0;
     return {id:String(i.ratingKey),title:i.type==='episode'?(i.grandparentTitle||i.title):i.title,subtitle:i.type==='episode'?'S'+i.parentIndex+' · E'+i.index+' — '+i.title:String(i.year||''),progress:duration?Math.max(0,Math.min(1,offset/duration)):0,remaining:Math.max(0,Math.ceil((duration-offset)/60000)),art:(i.type==='movie'?i.art:i.thumb)||i.thumb||i.parentThumb||'',playable:true};
    }));
-   cache={configured:true,playbackConfigured:true,items};at=Date.now();return cache;
+   cache={configured:true,items};at=Date.now();return cache;
   })();try{return await inflight;}finally{inflight=null;}
  }
  let recentCache=null,recentAt=0,recentInflight=null;
@@ -50,7 +66,7 @@ function createBridge(config,call=request,launch=launchPlxNative){
     const data=await call(config.plexUrl,'/library/sections/'+section.key+'/all?type='+(section.type==='movie'?'1':'2')+'&sort=addedAt%3Adesc',{...ph,'X-Plex-Container-Start':'0','X-Plex-Container-Size':'12'});
     return (data.MediaContainer.Metadata||[]).filter(i=>['movie','show'].includes(i.type)&&/^\d+$/.test(String(i.ratingKey))).map(i=>({id:String(i.ratingKey),title:i.title,subtitle:String(i.year||''),type:i.type,added:Number(i.addedAt)||0,progress:0,remaining:0,art:i.art||i.thumb||'',action:'open',playable:true}));
    }));
-   const all=groups.flat().sort((a,b)=>b.added-a.added);
+   const all=[].concat.apply([],groups).sort((a,b)=>b.added-a.added);
    recentCache={movies:all.filter(i=>i.type==='movie').slice(0,12),shows:all.filter(i=>i.type==='show').slice(0,12)};recentAt=Date.now();return recentCache;
   })();try{return await recentInflight;}finally{recentInflight=null;}
  }
@@ -65,9 +81,10 @@ function createBridge(config,call=request,launch=launchPlxNative){
   let u;try{u=new URL(req.url,'http://localhost');}catch(e){return send(400,{error:'Invalid URL'});}
   try {
    if(req.method==='GET'&&u.pathname==='/aerial'){const a=config.aerial||{};return send(200,{enabled:a.enabled===true,idleSeconds:a.idleSeconds||60,urls:(a.urls||[]).filter(u=>typeof u==='string'&&/^https:\/\//.test(u)).slice(0,12)});}
-   if(req.method==='GET'&&u.pathname==='/recent'){const r=await recent();return send(200,{movies:publicItems(r.movies),shows:publicItems(r.shows)});}
+   if(req.method==='GET'&&u.pathname==='/player')return send(200,await capabilities());
+   if(req.method==='GET'&&u.pathname==='/recent'){const r=await recent(),state=await capabilities();return send(200,{...state,movies:publicItems(describeItems(r.movies,state)),shows:publicItems(describeItems(r.shows,state))});}
    if(req.method==='GET'&&u.pathname==='/continue'){
-    const data=await list();return send(200,{...data,items:data.items.map(({art,...i})=>({...i,image:art?'/art/'+i.id:null}))});
+    const data=await list(),state=await capabilities();return send(200,{...data,...state,items:publicItems(describeItems(data.items,state))});
    }
    if(req.method==='GET'&&/^\/art\/\d+$/.test(u.pathname)){
     const item=await findItem(u.pathname.slice(5));
@@ -84,13 +101,17 @@ function createBridge(config,call=request,launch=launchPlxNative){
    }
    if(req.method==='POST'&&/^\/play\/\d+$/.test(u.pathname)){
     if(req.headers['x-cleanframe']!=='1')return send(403,{error:'Invalid request'});
-    if(playing)return send(409,{error:'Already opening PlxNative'});
+    if(playing)return send(409,{error:'Already opening Plex'});
     playing=true;
     try{
      const item=await findItem(u.pathname.slice(6));
      if(!item)return send(404,{error:'This title is no longer on your home screen'});
-     await launch({server:await serverIdentity(),ratingKey:item.id,action:u.searchParams.get('action')==='open'?'open':item.action||'play'});
-     return send(200,{ok:true});
+     const state=await player(),target=state.player;
+     if(state.playerError)return send(503,{error:state.playerError});
+     if(!target)return send(409,{error:'Install Plex or PlxNative on this TV to open titles.'});
+     const params=target.mode==='resume'?{plex:{server:await serverIdentity(),ratingKey:item.id,action:u.searchParams.get('action')==='open'?'open':item.action||'play'}}:{};
+     await launch({id:target.id,params});
+     return send(200,{ok:true,player:target.name,mode:target.mode});
     }finally{playing=false;}
    }
    send(404,{error:'Not found'});
@@ -98,5 +119,5 @@ function createBridge(config,call=request,launch=launchPlxNative){
  });
  return {server,list};
 }
-module.exports={createBridge,launchPlxNative,request};
+module.exports={createBridge,launchApp,installedApps,selectPlayer,request};
 if(require.main===module){const config=JSON.parse(fs.readFileSync(process.argv[2]));const {server}=createBridge(config);server.listen(config.port||8766,'127.0.0.1',()=>console.log('CleanFrame media bridge ready'));}

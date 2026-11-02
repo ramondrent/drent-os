@@ -50,7 +50,7 @@ try {
   await page.keyboard.press('Escape');
   await page.evaluate(()=>ShoreQA.scene('settings'));
   await page.screenshot({path:`output/playwright/settings-${width}${legacySpacing ? "-legacy" : ""}.png`});
-  await page.evaluate(()=>{window.__RAMON_NO_RELOAD=true;ShoreQA.activate('settings.group.samsung');});
+  await page.evaluate(()=>{window.__DRENT_NO_RELOAD=true;ShoreQA.activate('settings.group.samsung');});
   await page.waitForFunction(()=>ShoreQA.state().update && ShoreQA.state().update.updateAvailable===true);
   assert.equal(await page.evaluate(()=>ShoreQA.where().focusAction),'samsung.update');
   await page.keyboard.press('Enter');

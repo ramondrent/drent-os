@@ -1,10 +1,10 @@
-# Ramon OS
+# DrentOS
 
 Your TV, your home screen.
 
-Ramon OS is a personal launcher project built on [Nathan Clark's CleanFrame](https://github.com/nthnclrk/CleanFrame), adapted for a Samsung The Freestyle and a rooted LG G5. A quiet home screen with local wallpapers, large app tiles, remote navigation, and no promotional feed.
+DrentOS is a personal launcher project built on [Nathan Clark's CleanFrame](https://github.com/nthnclrk/CleanFrame), adapted for a Samsung The Freestyle and rooted LG webOS TVs. A quiet home screen with local wallpapers, large app tiles, remote navigation, and no promotional feed.
 
-Ramon OS brings both working versions under one identity. They share a design and upstream ancestry, but use different device APIs and deployment methods.
+DrentOS brings both working versions under one identity. They share a design and upstream ancestry, but use different device APIs and deployment methods.
 
 | Version | Features | Guide |
 | --- | --- | --- |
@@ -48,7 +48,7 @@ Device credentials, certificates, SSH keys, addresses, account tokens, SDK insta
 
 The owner has used both launchers on the named TVs. LG app naming, navigation, landscape layout, custom icons, and the earlier Infuse resume flow received owner feedback. The replacement native Plex resume integration has passed local tests and was installed; visible resume confirmation is still pending. The scroll/glass registration fix also awaits owner confirmation. The owner confirmed aerial playback after 60 seconds, remote wake-up, and the three Plex rows on the LG. The subsequent tighter spacing and blurred media backdrop are installed and await visual feedback.
 
-This is a personal source repository, not a universal installer or replacement TV firmware. LG uses a self-contained Ramon OS service and Home bind-mount on a rooted webOS TV; Samsung uses a signed Tizen application. Existing native Home assignments are installation-specific.
+This is a personal source repository, not a universal installer or replacement TV firmware. LG uses a self-contained DrentOS service and Home bind-mount on a rooted webOS TV; Samsung uses a signed Tizen application. Existing native Home assignments are installation-specific.
 
 ## Credits and licensing
 

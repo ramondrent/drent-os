@@ -105,7 +105,7 @@ The local TV date appears beneath the clock as weekday, day, month and year. It 
 
 Continue Watching now launches `com.beb.plxnative` locally with `params.plex` containing the Plex server machine identifier, the item's rating key, and `action: play` to resume. The bridge obtains the server identity from Plex; no credentials enter the frontend or launch payload. The previous Home Assistant/Infuse handoff and HDMI switch are no longer used. PlxNative must be signed in to a profile with access to that server. Sign-in/onboarding can defer playback.
 
-## Ramon OS: recent additions and Home idle mode
+## DrentOS: recent additions and Home idle mode
 
 Down from Continue Watching reaches recently added movies, then TV shows. Up returns through those rows; Back returns to apps. New titles open their detail page in Plex. Continue Watching still resumes playback. The Home scroll and glass registration follow the selected row.
 

@@ -1,4 +1,4 @@
-# Ramon OS
+# DrentOS
 
 This repository contains independent LG webOS (`lg/`) and Samsung Tizen (`samsung/`) launchers. Preserve both working versions; do not assume their device APIs are interchangeable.
 

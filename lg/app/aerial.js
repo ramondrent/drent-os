@@ -19,5 +19,5 @@
   if(config&&config.enabled&&home()&&Date.now()>failedUntil&&Date.now()-last>config.idleSeconds*1000)start();
  },1000);
  var x=new XMLHttpRequest();x.open('GET','http://127.0.0.1:8766/aerial',true);x.timeout=8000;x.onload=function(){try{var d=JSON.parse(x.responseText);if(x.status===200&&Array.isArray(d.urls)){config={enabled:d.enabled===true,urls:d.urls.filter(function(u){return /^https:\/\//.test(u);}),idleSeconds:Math.max(30,Number(d.idleSeconds)||60)};}}catch(e){}};x.send();
- window.RamonAerial={start:start,stop:function(){stop(false);},state:function(){return {configured:!!config&&config.urls.length>0,active:active,starting:starting};}};
+ window.DrentAerial=window.RamonAerial={start:start,stop:function(){stop(false);},state:function(){return {configured:!!config&&config.urls.length>0,active:active,starting:starting};}};
 }());

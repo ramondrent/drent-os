@@ -1,5 +1,5 @@
 #!/bin/sh
-# Unmount Ramon OS Home overlay and restore stock LG Home.
+# Unmount DrentOS Home overlay and restore stock LG Home.
 export PATH=/usr/bin:/usr/sbin:/bin:/sbin:$PATH
 H=/usr/palm/applications/com.webos.app.home
 if grep -q " $H " /proc/mounts; then

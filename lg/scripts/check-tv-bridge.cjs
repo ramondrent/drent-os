@@ -55,10 +55,10 @@ assert.strictEqual(staged.transparent, false);
 assert.strictEqual(staged.splashBackground, undefined);
 
 // 2. Test tv-bridge.cjs HTTP endpoints + self-update + rollback
-var tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ramon-tv-bridge-'));
+var tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'drent-tv-bridge-'));
 var iconDir = path.join(tmpDir, 'netflix');
-var tvRoot = path.join(tmpDir, 'ramon-os');
-var archiveSrc = path.join(tmpDir, 'archive-build', 'ramon-os-abcdef1234567890abcdef1234567890abcdef12', 'lg');
+var tvRoot = path.join(tmpDir, 'drent-os');
+var archiveSrc = path.join(tmpDir, 'archive-build', 'drent-os-abcdef1234567890abcdef1234567890abcdef12', 'lg');
 cp.execFileSync('/bin/sh', ['-c', 'mkdir -p "$1" "$2/app/assets/private-fonts" "$3/app/assets" "$3/service"', 'sh', iconDir, tvRoot, archiveSrc]);
 
 var iconPath = path.join(iconDir, 'icon.png');
@@ -78,6 +78,9 @@ fs.writeFileSync(path.join(tvRoot, 'version.json'), JSON.stringify({
   commit: '1111111111111111111111111111111111111111',
   shortCommit: '1111111',
   summary: 'Initial install'
+}));
+fs.writeFileSync(path.join(tvRoot, 'update-config.json'), JSON.stringify({
+  githubToken: 'test-token-123'
 }));
 
 // Build mock GitHub tarball containing v2
@@ -104,6 +107,7 @@ var inst = bridge.createTvBridge({
   stage: function () { stageCalls++; return Promise.resolve(); },
   reload: function () { reloadCalls++; return Promise.resolve(); },
   fetchUrl: function (urlStr, headers, binary) {
+    assert.strictEqual(headers && headers.Authorization, 'Bearer test-token-123');
     if (binary) {
       assert(urlStr.indexOf(targetSha) >= 0, 'Expected tarball URL for target SHA');
       return Promise.resolve(tarBuffer);

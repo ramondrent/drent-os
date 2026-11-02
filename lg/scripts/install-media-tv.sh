@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
-L=/media/developer/ramon-os
+L=/media/developer/drent-os
+[ -d "$L" ] || L=/media/developer/ramon-os
 M=/media/developer/cleanframe-media
 B=$L/backup/before-plex-shelf
 [ -f "$L/app/main.js" ] && [ -f "$L/stage-home.sh" ]
@@ -17,7 +18,8 @@ for file in index.html main.js style.css continue.js; do cp "/tmp/cleanframe-med
 cat > "$M/restore.sh" <<'RESTORE'
 #!/bin/sh
 set -eu
-L=/media/developer/ramon-os
+L=/media/developer/drent-os
+[ -d "$L" ] || L=/media/developer/ramon-os
 for file in index.html main.js style.css; do cp "$L/backup/before-plex-shelf/$file" "$L/app/$file"; done
 sh "$L/stage-home.sh"
 rm -f /var/lib/webosbrew/init.d/15-cleanframe-media

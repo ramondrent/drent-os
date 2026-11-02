@@ -1,4 +1,4 @@
-/* LG webOS adapter. Talks only to the on-TV Ramon OS loopback service. */
+/* LG webOS adapter. Talks only to the on-TV DrentOS loopback service. */
 (function () {
   'use strict';
   // CSS.supports(gap) also accepts grid gap on older engines: measure flex once.
@@ -25,7 +25,7 @@
       }
       finish(null, data);
     };
-    x.onerror = function () { finish({message:'The TV service is unavailable.',detail:'Check that the Ramon OS TV service is running.'}); };
+    x.onerror = function () { finish({message:'The TV service is unavailable.',detail:'Check that the DrentOS TV service is running.'}); };
     x.ontimeout = function () { finish({message:'The TV did not respond. Please try again.'}); };
     if (payload !== null) x.setRequestHeader('Content-Type','application/json');
     x.send(payload === null ? null : JSON.stringify(payload));

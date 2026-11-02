@@ -1,8 +1,8 @@
 {
-  "name": "ramon-os-samsung",
+  "name": "drent-os-samsung",
   "version": "0.6.1",
   "private": true,
-  "description": "Ramon OS launcher \u2014 Samsung Tizen edition",
+  "description": "DrentOS launcher \u2014 Samsung Tizen edition",
   "scripts": {
     "dev": "python3 scripts/preview.py",
     "check": "node --check app/main.js && node --check app/device.js && python3 scripts/check.py && node --check app/continue.js && node --check app/aerial.js && node --check app/plex.js",

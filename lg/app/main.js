@@ -540,7 +540,7 @@
       updateState.canRollback = !!data.canRollback;
       updateState.error = data.checkError || null;
       if (check && !updateState.error && !updateState.updateAvailable && updateState.installed && updateState.installed.commit) {
-        updateState.notice = 'Ramon OS is up to date (' + updateState.installed.shortCommit + ').';
+        updateState.notice = 'DrentOS is up to date (' + updateState.installed.shortCommit + ').';
       }
       norm(); render();
     });
@@ -565,7 +565,7 @@
       updateState.canRollback = !!data.canRollback;
       updateState.notice = 'Updated to ' + (updateState.installed && updateState.installed.shortCommit || 'latest') + '. Reloading launcher…';
       norm(); render();
-      setTimeout(function () { if (!window.__RAMON_NO_RELOAD) window.location.reload(); }, 350);
+      setTimeout(function () { if (!window.__DRENT_NO_RELOAD && !window.__RAMON_NO_RELOAD) window.location.reload(); }, 350);
     });
   }
   function rollbackUpdate() {
@@ -587,7 +587,7 @@
       updateState.canRollback = !!data.canRollback;
       updateState.notice = 'Previous version restored. Reloading launcher…';
       norm(); render();
-      setTimeout(function () { if (!window.__RAMON_NO_RELOAD) window.location.reload(); }, 350);
+      setTimeout(function () { if (!window.__DRENT_NO_RELOAD && !window.__RAMON_NO_RELOAD) window.location.reload(); }, 350);
     });
   }
 
@@ -1033,7 +1033,7 @@
     if (t.group === 'rotation') return [{ id: 'mode', title: '', items: options('mode', MODES.map(function (m) { return m.id; }), flat),
       reason: flat ? 'Choose Photo in Background to use rotation.' : 'Timed changes pause while Settings or another panel is open.' }];
     var canInstall = !!(updateState.updateAvailable || (updateState.latest && (!updateState.installed || !updateState.installed.commit)));
-    var upLabel = updateState.installing ? 'Updating Ramon OS…'
+    var upLabel = updateState.installing ? 'Updating DrentOS…'
       : updateState.checking ? 'Checking for updates…'
       : canInstall && updateState.latest ? 'Install update (' + updateState.latest.shortCommit + ')'
       : 'Check for updates';
@@ -1050,11 +1050,11 @@
       updateItems.push({
         action: 'samsung.rollback',
         label: updateState.rollingBack ? 'Restoring previous version…' : 'Revert to previous version',
-        description: 'Restore the previous installed Ramon OS build'
+        description: 'Restore the previous installed DrentOS build'
       });
     }
     return [
-      { id: 'update', title: 'Ramon OS update', items: updateItems },
+      { id: 'update', title: 'DrentOS update', items: updateItems },
       { id: 'samsung', title: 'System', items: [
         { action: 'samsung.home', label: 'Launcher manager', description: 'Open the launcher manager and recovery controls' },
         { action: 'samsung.settings', label: 'TV settings', description: 'Picture, sound and network settings' }

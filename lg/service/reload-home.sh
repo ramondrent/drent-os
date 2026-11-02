@@ -1,5 +1,5 @@
 #!/bin/sh
-# Reload the Ramon OS Home renderer in WebAppMgr without restarting sam.
+# Reload the DrentOS Home renderer in WebAppMgr without restarting sam.
 export PATH=/usr/bin:/usr/sbin:/bin:/sbin:$PATH
 if pgrep -f "[a]pp-id=com.webos.app.home" >/dev/null; then
   pkill -f "[a]pp-id=com.webos.app.home"

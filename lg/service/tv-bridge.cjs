@@ -8,8 +8,10 @@ const cp = require('child_process');
 const urlMod = require('url');
 
 const PORT = 8765;
-const DEFAULT_ROOT = fs.existsSync('/media/developer/ramon-os') ? '/media/developer/ramon-os' : '/media/developer/cleanyourtv';
-const DEFAULT_REPO = 'ramondrent/ramon-os';
+const DEFAULT_ROOT = fs.existsSync('/media/developer/drent-os')
+  ? '/media/developer/drent-os'
+  : (fs.existsSync('/media/developer/ramon-os') ? '/media/developer/ramon-os' : '/media/developer/cleanyourtv');
+const DEFAULT_REPO = 'ramondrent/drent-os';
 const DEFAULT_BRANCH = 'main';
 const ENV = Object.assign({}, process.env, {
   PATH: '/usr/bin:/usr/sbin:/bin:/sbin:' + (process.env.PATH || '')
@@ -53,7 +55,7 @@ function defaultFetchUrl(urlStr, headers, binary, redirectsLeft) {
     if (remaining < 0) return reject(new Error('Too many redirects'));
     const parsed = urlMod.parse(urlStr);
     const client = parsed.protocol === 'https:' ? https : http;
-    const reqHeaders = Object.assign({ 'User-Agent': 'ramon-os-tv-bridge' }, headers || {});
+    const reqHeaders = Object.assign({ 'User-Agent': 'drent-os-tv-bridge' }, headers || {});
     const options = Object.assign({}, parsed, { method: 'GET', headers: reqHeaders });
     const maxBytes = binary ? 48 * 1024 * 1024 : 2 * 1024 * 1024;
     const timeoutMs = binary ? 30000 : 10000;
@@ -128,9 +130,9 @@ function readBody(req) {
 function createTvBridge(options) {
   const opts = options || {};
   const callLuna = opts.luna || defaultLuna;
-  const rootDir = path.resolve(opts.rootDir || process.env.RAMON_OS_ROOT || DEFAULT_ROOT);
-  const repo = opts.repo || process.env.RAMON_OS_REPO || DEFAULT_REPO;
-  const branch = opts.branch || process.env.RAMON_OS_BRANCH || DEFAULT_BRANCH;
+  const rootDir = path.resolve(opts.rootDir || process.env.DRENT_OS_ROOT || process.env.RAMON_OS_ROOT || DEFAULT_ROOT);
+  const repo = opts.repo || process.env.DRENT_OS_REPO || process.env.RAMON_OS_REPO || DEFAULT_REPO;
+  const branch = opts.branch || process.env.DRENT_OS_BRANCH || process.env.RAMON_OS_BRANCH || DEFAULT_BRANCH;
   const fetchUrl = opts.fetchUrl || defaultFetchUrl;
   const runStage = opts.stage || function () {
     const stageScript = path.join(rootDir, 'stage-home.sh');
@@ -169,12 +171,32 @@ function createTvBridge(options) {
     return fs.existsSync(path.join(rootDir, 'backup/app.prev/index.html'));
   }
 
+  function readUpdateConfig() {
+    const cfg = readJsonSafe(path.join(rootDir, 'update-config.json'), null);
+    const token = (cfg && typeof cfg.githubToken === 'string' && cfg.githubToken.trim()) || process.env.GITHUB_TOKEN || '';
+    return {
+      repo: (cfg && typeof cfg.repo === 'string' && cfg.repo.trim()) || repo,
+      branch: (cfg && typeof cfg.branch === 'string' && cfg.branch.trim()) || branch,
+      githubToken: token.trim()
+    };
+  }
+
+  function githubHeaders(extra) {
+    const cfg = readUpdateConfig();
+    const h = Object.assign({ 'Accept': 'application/vnd.github+json' }, extra || {});
+    if (cfg.githubToken) {
+      h['Authorization'] = 'Bearer ' + cfg.githubToken;
+    }
+    return h;
+  }
+
   async function fetchLatestCommit(force) {
     if (!force && latestCache && Date.now() - latestCacheAt < 30000) {
       return latestCache;
     }
-    const apiUrl = 'https://api.github.com/repos/' + repo + '/commits/' + encodeURIComponent(branch);
-    const data = await fetchUrl(apiUrl, { Accept: 'application/vnd.github+json' }, false);
+    const cfg = readUpdateConfig();
+    const apiUrl = 'https://api.github.com/repos/' + cfg.repo + '/commits/' + encodeURIComponent(cfg.branch);
+    const data = await fetchUrl(apiUrl, githubHeaders(), false);
     const sha = data && typeof data.sha === 'string' ? data.sha.trim() : '';
     if (!/^[0-9a-f]{40}$/i.test(sha)) {
       throw new Error('Invalid commit SHA from GitHub');
@@ -199,7 +221,12 @@ function createTvBridge(options) {
       try {
         await fetchLatestCommit(true);
       } catch (err) {
-        checkError = 'Could not reach GitHub (' + String(err && err.message || err) + ').';
+        const msg = String(err && err.message || err);
+        if (msg.indexOf('404') >= 0 && !readUpdateConfig().githubToken) {
+          checkError = 'Repository is private — add githubToken in update-config.json on the TV.';
+        } else {
+          checkError = 'Could not reach GitHub (' + msg + ').';
+        }
       }
     }
     const updateAvailable = !!(latestCache && latestCache.commit && latestCache.commit !== installed.commit);
@@ -222,9 +249,10 @@ function createTvBridge(options) {
     busyUpdating = true;
     const stageDir = path.join(rootDir, 'update.stage');
     try {
+      const cfg = readUpdateConfig();
       const latest = await fetchLatestCommit(true);
-      const tarUrl = 'https://codeload.github.com/' + repo + '/tar.gz/' + latest.commit;
-      const archiveBuf = await fetchUrl(tarUrl, {}, true);
+      const tarUrl = 'https://codeload.github.com/' + cfg.repo + '/tar.gz/' + latest.commit;
+      const archiveBuf = await fetchUrl(tarUrl, githubHeaders({ Accept: 'application/octet-stream' }), true);
 
       await execShell('rm -rf "$1" && mkdir -p "$1" "$2/backup"', [stageDir, rootDir], 10000);
       const archivePath = path.join(stageDir, 'archive.tgz');
@@ -285,6 +313,12 @@ function createTvBridge(options) {
         '  cp "$SRC/service/stage-home.cjs" "$R/stage-home.cjs"',
         '  chmod 644 "$R/stage-home.cjs"',
         'fi',
+        'for s in start-home.sh reload-home.sh undo-home.sh; do',
+        '  if [ -f "$SRC/service/$s" ] && [ -f "$R/$s" ]; then',
+        '    cp "$SRC/service/$s" "$R/$s"',
+        '    chmod 755 "$R/$s"',
+        '  fi',
+        'done',
         'rm -rf "$3"'
       ].join('\n');
 
@@ -458,9 +492,9 @@ function createTvBridge(options) {
 module.exports = { createTvBridge: createTvBridge, defaultLuna: defaultLuna, defaultFetchUrl: defaultFetchUrl };
 
 if (require.main === module) {
-  const port = Number(process.env.RAMON_OS_PORT) || PORT;
+  const port = Number(process.env.DRENT_OS_PORT || process.env.RAMON_OS_PORT) || PORT;
   const bridge = createTvBridge();
   bridge.server.listen(port, '127.0.0.1', function () {
-    console.log('Ramon OS TV bridge listening on 127.0.0.1:' + port);
+    console.log('DrentOS TV bridge listening on 127.0.0.1:' + port);
   });
 }

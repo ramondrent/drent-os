@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
-L=/media/developer/ramon-os
+L=/media/developer/drent-os
+[ -d "$L" ] || L=/media/developer/ramon-os
+[ -d "$L" ] || L=/media/developer/cleanyourtv
 S=$L/home-overlay
 mkdir -p "$S"
 cp -R "$L/app/." "$S/"

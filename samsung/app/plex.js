@@ -1,12 +1,12 @@
 /* Direct Plex client for the private Samsung widget; no companion service. */
 (function(){
  'use strict';
- var c=(window.RamonConfig||{}).plex||{},command=0;
+ var c=(window.DrentConfig||window.RamonConfig||{}).plex||{},command=0;
  function query(values){return Object.keys(values).map(function(k){return encodeURIComponent(k)+'='+encodeURIComponent(values[k]);}).join('&');}
  function call(path,method,raw){return new Promise(function(resolve,reject){
   if(!c.url||!c.token){reject(new Error('Connect Plex to see your library'));return;}
   var x=new XMLHttpRequest();x.open(method||'GET',c.url.replace(/\/$/,'')+path,true);x.timeout=20000;
-  var h={'Accept':raw?'application/xml':'application/json','X-Plex-Token':c.token,'X-Plex-Client-Identifier':c.client||'ramon-os-freestyle','X-Plex-Product':'Ramon OS','X-Plex-Version':'1.0','X-Plex-Device':'Ramon OS','X-Plex-Device-Name':'Freestyle Home','X-Plex-Platform':'Tizen','X-Plex-Provides':'controller'};
+  var h={'Accept':raw?'application/xml':'application/json','X-Plex-Token':c.token,'X-Plex-Client-Identifier':c.client||'drent-os-freestyle','X-Plex-Product':'DrentOS','X-Plex-Version':'1.0','X-Plex-Device':'DrentOS','X-Plex-Device-Name':'Freestyle Home','X-Plex-Platform':'Tizen','X-Plex-Provides':'controller'};
   if(raw)h['X-Plex-Target-Client-Identifier']=c.player;
   Object.keys(h).forEach(function(k){x.setRequestHeader(k,h[k]);});
   x.onload=function(){if(x.status<200||x.status>=300){reject(new Error('Plex request failed ('+x.status+')'));return;}try{resolve(raw?x.responseText:JSON.parse(x.responseText));}catch(e){reject(new Error('Invalid Plex response'));}};

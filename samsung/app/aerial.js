@@ -19,7 +19,7 @@
  setInterval(function(){if(active||starting){if(!home())stop(false);else if(video.currentTime!==lastTime){lastTime=video.currentTime;stalledAt=Date.now();}else if(Date.now()-stalledAt>15000)stop(true);return;}
   if(config&&config.enabled&&home()&&Date.now()>failedUntil&&Date.now()-last>config.idleSeconds*1000)start();
  },1000);
- var d=(window.RamonConfig||{}).aerial;
+ var d=(window.DrentConfig||window.RamonConfig||{}).aerial;
  if(d&&Array.isArray(d.urls))config={enabled:d.enabled===true,urls:d.urls.filter(function(u){return /^https:\/\//.test(u);}),idleSeconds:Math.max(30,Number(d.idleSeconds)||60)};
- window.RamonAerial={start:start,stop:function(){stop(false);},state:function(){return {configured:!!config&&config.urls.length>0,active:active,starting:starting};}};
+ window.DrentAerial=window.RamonAerial={start:start,stop:function(){stop(false);},state:function(){return {configured:!!config&&config.urls.length>0,active:active,starting:starting};}};
 }());

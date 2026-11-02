@@ -1,4 +1,4 @@
-# Ramon OS — LG edition
+# DrentOS — LG edition
 
 Customized for rooted LG webOS TVs: the original G5 installation runs webOS 25; the CX adaptation runs webOS 5.6.2. `app/` is the launcher frontend; `service/tv-bridge.cjs` provides the local webOS app/input/icon bridge on `127.0.0.1:8765`, and `service/media-bridge.cjs` supplies Plex Continue Watching and native playback requests on `127.0.0.1:8766`.
 
@@ -14,7 +14,7 @@ node scripts/check-media.cjs
 node scripts/check-media-http.cjs
 ```
 
-The frontend expects the Ramon OS TV service on `127.0.0.1:8765`, and the media bridge on `127.0.0.1:8766`. Browser tests mock those endpoints. No LAN address or account token is embedded in the frontend.
+The frontend expects the DrentOS TV service on `127.0.0.1:8765`, and the media bridge on `127.0.0.1:8766`. Browser tests mock those endpoints. No LAN address or account token is embedded in the frontend.
 
 ## Plex setup
 
@@ -28,15 +28,15 @@ On the TV, `service/start-media.sh` expects `/media/developer/cleanframe-media/c
 
 ## Deployment boundary
 
-This port is self-contained on a rooted webOS TV at `/media/developer/ramon-os` (`service/tv-bridge.cjs`, `service/stage-home.cjs`, `service/start-home.sh`, `service/reload-home.sh`, `service/undo-home.sh`, and `scripts/stage-home-webos.sh`). Root access (`webosbrew`) is not provisioned by this repository. Do not run the inherited Samsung packaging commands for LG; `app/config.xml` is a retained Tizen artifact, not an LG installer.
+This port is self-contained on a rooted webOS TV at `/media/developer/drent-os` (or existing `/media/developer/ramon-os` / `/media/developer/cleanyourtv` installations; `service/tv-bridge.cjs`, `service/stage-home.cjs`, `service/start-home.sh`, `service/reload-home.sh`, `service/undo-home.sh`, and `scripts/stage-home-webos.sh`). Root access (`webosbrew`) is not provisioned by this repository. Do not run the inherited Samsung packaging commands for LG; `app/config.xml` is a retained Tizen artifact, not an LG installer.
 
-In **Settings → TV**, the launcher can check `ramondrent/ramon-os` (`main`) on GitHub and install updates directly on the TV through `service/tv-bridge.cjs` (`GET /api/update`, `POST /api/update`, `POST /api/update/rollback`). Installing an update backs up the previous `app/` directory to `backup/app.prev`, preserves any locally installed `app/assets/private-fonts/` overlay, records the installed commit in `version.json`, re-stages `home-overlay/`, and reloads Home. When `backup/app.prev` is present, **Revert to previous version** restores the prior build.
+In **Settings → TV**, the launcher can check `ramondrent/drent-os` (`main`) on GitHub and install updates directly on the TV through `service/tv-bridge.cjs` (`GET /api/update`, `POST /api/update`, `POST /api/update/rollback`). Installing an update backs up the previous `app/` directory to `backup/app.prev`, preserves any locally installed `app/assets/private-fonts/` overlay, records the installed commit in `version.json`, re-stages `home-overlay/`, and reloads Home. When `backup/app.prev` is present, **Revert to previous version** restores the prior build.
 
 During QuickStart+ silent boots into `Active Standby`, `service/start-home.sh` preserves the CRIU-preloaded HDMI input (`com.webos.app.hdmi1` / previous input) and updates `/tmp/checkpoint/manager_pid` after restarting `sam` so `com.webos.app.home` is never forced into the foreground during `Active Standby`.
 
-For an established installation, back up the changed files before copying them to `/media/developer/ramon-os`. Every public frontend resource must be readable by the Home renderer (files 644, directories 755); private service configuration stays 600 inside its 700 directory. Run `stage-home.sh`, verify overlay permissions, then `reload-home.sh`. Service changes require restarting `tv-bridge.cjs` or `media-bridge.cjs`. Keep the pre-change files and original native Home configuration (`backup/home-appinfo.orig.json`) for recovery.
+For an established installation, back up the changed files before copying them to `/media/developer/drent-os` (or `/media/developer/ramon-os`). Every public frontend resource must be readable by the Home renderer (files 644, directories 755); private service configuration stays 600 inside its 700 directory. Run `stage-home.sh`, verify overlay permissions, then `reload-home.sh`. Service changes require restarting `tv-bridge.cjs` or `media-bridge.cjs`. Keep the pre-change files and original native Home configuration (`backup/home-appinfo.orig.json`) for recovery.
 
-`install-webos-local.sh`, `install-media-tv.sh`, and `restore-webos-local.sh` document the installation and migration from older CleanYourTV setups to `/media/developer/ramon-os`. Do not overwrite existing recovery backups. A new TV needs its own root setup and verified recovery baseline.
+`install-webos-local.sh`, `install-media-tv.sh`, and `restore-webos-local.sh` document the installation and migration from older CleanYourTV setups to `/media/developer/drent-os`. Do not overwrite existing recovery backups. A new TV needs its own root setup and verified recovery baseline.
 
 ### Older webOS / CX
 
@@ -46,7 +46,7 @@ Frontend flex spacing is feature-detected once; older browsers use sibling margi
 
 Keep per-device access, exact Home backups, initial app choices and verification records in ignored `.local/` storage. The stock LG Home can be restored through the backend's `undo-home.sh`; also restore any separately recorded Home-style setting. The CX has both basic and full-screen Home entries, so verify the physical Home button from another app, not just a successful launch API response.
 
-On the verified CX, the physical Home key targets `com.webos.app.fullhome` even when `homeAutoLaunchMode` is `partial`; that setting is not sufficient to redirect it. `home-full-webos-native.sh` retains the fullhome native identity and forwards launch/relaunch to the custom Home. The native boot wrapper mounts this over the fullhome executable in RAM. `undo-home-webos-native.sh`, installed as the backend's `undo-home.sh`, removes that mount before invoking the preserved original `undo-home-upstream.sh`. Preserve both original LG executables before setup. The original Home-mode setting is retained. Owner confirmation of YouTube → physical Home returning to Ramon OS was obtained again after a restart. On the verified cold boot, Homebrew started Ramon OS at approximately 52 seconds; both local services and the Home redirects persisted.
+On the verified CX, the physical Home key targets `com.webos.app.fullhome` even when `homeAutoLaunchMode` is `partial`; that setting is not sufficient to redirect it. `home-full-webos-native.sh` retains the fullhome native identity and forwards launch/relaunch to the custom Home. The native boot wrapper mounts this over the fullhome executable in RAM. `undo-home-webos-native.sh`, installed as the backend's `undo-home.sh`, removes that mount before invoking the preserved original `undo-home-upstream.sh`. Preserve both original LG executables before setup. The original Home-mode setting is retained. Owner confirmation of YouTube → physical Home returning to DrentOS was obtained again after a restart. On the verified cold boot, Homebrew started DrentOS at approximately 52 seconds; both local services and the Home redirects persisted.
 
 ## Notes
 

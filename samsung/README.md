@@ -1,4 +1,4 @@
-# Ramon OS — Samsung edition
+# DrentOS — Samsung edition
 
 The personalized Tizen version of CleanFrame, with bundled app cards and remote-operated appearance settings. Development and browser previews require no TV.
 

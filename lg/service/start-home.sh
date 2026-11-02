@@ -1,18 +1,34 @@
 #!/bin/sh
-# Ramon OS boot hook for LG webOS (/var/lib/webosbrew/init.d/10-ramon-os-home).
-# Starts the local loopback bridge, bind-mounts Ramon OS over LG's Home slot in RAM,
+# DrentOS boot hook for LG webOS (/var/lib/webosbrew/init.d/10-drent-os-home).
+# Starts the local loopback bridge, bind-mounts DrentOS over LG's Home slot in RAM,
 # and preserves the preloaded HDMI input across Active Standby -> Suspend -> CEC wake.
 export PATH=/usr/bin:/usr/sbin:/bin:/sbin:$PATH
-L=/media/developer/ramon-os
+L=/media/developer/drent-os
+[ -d "$L" ] || L=/media/developer/ramon-os
 H=/usr/palm/applications/com.webos.app.home
 
-pgrep -f '[n]ode /media/developer/ramon-os/tv-bridge.cjs' >/dev/null || (
-  nohup /usr/bin/node "$L/tv-bridge.cjs" >/tmp/ramon-os-bridge.log 2>&1 </dev/null &
+pgrep -f "[n]ode $L/tv-bridge.cjs" >/dev/null || (
+  nohup /usr/bin/node "$L/tv-bridge.cjs" >/tmp/drent-os-bridge.log 2>&1 </dev/null &
 )
 
 [ -e "$L/DISABLE" ] && exit 0
 
 sh "$L/stage-home.sh"
+
+AV=/usr/lib/libav-connector.so.1.0.0
+if [ -f "$AV" ] && ! grep -q " $AV " /proc/mounts; then
+  if grep -q "subScalerOccupied" "$AV" 2>/dev/null; then
+    /usr/bin/node -e '
+      var fs = require("fs");
+      var buf = fs.readFileSync(process.argv[1]);
+      var idx = buf.indexOf("subScalerOccupied\0");
+      if (idx >= 0) buf.write("subScalerOccupie_\0", idx, "ascii");
+      fs.writeFileSync(process.argv[2], buf);
+    ' "$AV" "$L/libav-connector.so.1.0.0" 2>/dev/null && \
+    chmod 755 "$L/libav-connector.so.1.0.0" && \
+    mount --bind "$L/libav-connector.so.1.0.0" "$AV" 2>/dev/null || true
+  fi
+fi
 
 if grep -q " $H " /proc/mounts; then
   [ "${1:-}" = keep ] && exit 0
@@ -35,6 +51,12 @@ systemctl restart sam
   if [ -d /tmp/checkpoint ] && pidof sam >/dev/null 2>&1; then
     pidof sam > /tmp/checkpoint/manager_pid 2>/dev/null || true
   fi
+  if [ -x /usr/sbin/extinput-integration ]; then
+    systemctl restart extinput-integration 2>/dev/null || true
+  fi
+  for p in $(pgrep -f '^/usr/bin/com.webos.app.inputcommon' || true); do
+    kill -9 "$p" 2>/dev/null || true
+  done
   sleep 4
   target_app=""
   if [ "$power_state" = "Active Standby" ]; then

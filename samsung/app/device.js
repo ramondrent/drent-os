@@ -1,6 +1,15 @@
 /* Public Tizen application APIs. No Mac server, network address or credentials. */
 (function () {
   'use strict';
+  // CSS.supports(gap) also accepts grid gap on older engines: measure flex once.
+  var gapProbe = document.createElement('div');
+  gapProbe.style.cssText = 'position:absolute;visibility:hidden;display:flex;flex-direction:column;row-gap:1px';
+  gapProbe.appendChild(document.createElement('div'));
+  gapProbe.appendChild(document.createElement('div'));
+  document.body.appendChild(gapProbe);
+  if (gapProbe.scrollHeight !== 1) document.documentElement.classList.add('no-flex-gap');
+  document.body.removeChild(gapProbe);
+
   var IDS = {
     stremio: 'IkWsFHtOY9.Stremio', netflix: 'org.tizen.netflix-app',
     disneyplus: 'MCmYXNxgcu.DisneyPlus', youtube: '9Ur5IzDKqV.TizenYouTube',
@@ -10,11 +19,17 @@
   };
   var STREAMING = ['as6cYRgkPy.Binge', '73iTZRTc34.Stan', '5b8c3eb16b.BeamCTVDev',
     'KaLitts8bq.tenplaySamsungTizen', 'eYuOiOLYQX.KayoSports', 'Ne2ZsPWdKl.9NOW',
-    '3KA0pm7a7V.TubiTV', 'rJeHak5zRg.Spotify', 'icp4AvUPiA.7plus'];
-  var CONSUMER_SYSTEM = ['org.tizen.browser', 'com.microsoft.copilot'];
-  var EXTRA_BRANDS = {'rJeHak5zRg.Spotify': 'spotify', '5b8c3eb16b.BeamCTVDev': 'hbomax', '3KA0pm7a7V.TubiTV': 'tubi'};
+    '3KA0pm7a7V.TubiTV', 'rJeHak5zRg.Spotify', 'icp4AvUPiA.7plus',
+    'evKhCgZelL.AmazonIgnitionLauncher2'];
+  var CONSUMER_SYSTEM = ['org.tizen.browser', 'com.microsoft.copilot', 'org.tizen.tv-viewer'];
+  var EXTRA_BRANDS = {
+    'rJeHak5zRg.Spotify': 'spotify', '5b8c3eb16b.BeamCTVDev': 'hbomax', '3KA0pm7a7V.TubiTV': 'tubi',
+    'evKhCgZelL.AmazonIgnitionLauncher2': 'primevideo', 'RN1MCdNq8t.Netflix': 'netflix'
+  };
   var INTERNAL = ['adplatform.ADPlayer', 'WykOS4t4F0.cmsWebApp', '25emanual3.emanual',
-    'ZODRT12q2l.WebAccountExtension', 'ByJlgt0XeD.CastSettingsApp', 'tv6pbVMQFF.PrivacyChoices'];
+    'ZODRT12q2l.WebAccountExtension', 'ByJlgt0XeD.CastSettingsApp', 'tv6pbVMQFF.PrivacyChoices',
+    'OjBS9h5ZF9.emanual', 'jLU2jKvbyN.PrivacyChoices', 'JGHCDI7ctc.SmartTV',
+    'w2VwCK465D.OTApp', 'aQjWjLsPaO.MultiScreenWebLauncher', '8GWN8M2GAC.juke'];
   var SELF = 'zolvT6pDD0.FreestyleHome';
   function api() { return window.tizen && window.tizen.application; }
   function unavailable(done) {
@@ -31,7 +46,15 @@
   function launchApp(id, done) {
     if (!api()) { unavailable(done); return; }
     var finish = bounded(done);
-    try { api().launch(id, function () { finish(null); }, function (err) { finish(failure(err)); }); }
+    try {
+      api().launch(id, function () { finish(null); }, function (err) {
+        if (id === 'org.tizen.tv-viewer') {
+          try { api().launch('org.tizen.SMSourceAPP', function () { finish(null); }, function () { finish(failure(err)); }); return; }
+          catch (_) {}
+        }
+        finish(failure(err));
+      });
+    }
     catch (err) { finish(failure(err)); }
   }
   function launch(brand, done) {
@@ -44,11 +67,23 @@
     try {
       var data = [new tizen.ApplicationControlData('mode', ['fullscreen']), new tizen.ApplicationControlData('requester', ['mobile'])];
       var control = new tizen.ApplicationControl('http://tizen.org/appcontrol/operation/default', null, null, null, data);
-      api().launchAppControl(control, 'org.tizen.art-app', function () { finish(null); }, function (err) { finish(failure(err)); });
+      api().launchAppControl(control, 'org.tizen.art-app', function () { finish(null); }, function (err) {
+        try { api().launch('org.tizen.SMSourceAPP', function () { finish(null); }, function () { finish(failure(err)); }); }
+        catch (_) { finish(failure(err)); }
+      });
     } catch (err) { finish(failure(err)); }
   }
   function home(done) { launchApp('com.samsung.tv.csfs', done); }
-  function settings(done) { launchApp('com.samsung.tv.coba.setting', done); }
+  function settings(done) {
+    if (!api()) { unavailable(done); return; }
+    var finish = bounded(done);
+    try {
+      api().launch('com.samsung.tv.coba.setting', function () { finish(null); }, function (err) {
+        try { api().launch('org.tizen.menu', function () { finish(null); }, function () { finish(failure(err)); }); }
+        catch (_) { finish(failure(err)); }
+      });
+    } catch (err) { finish(failure(err)); }
+  }
   function apps(done) {
     if (!api()) { unavailable(done); return; }
     var finish = bounded(done);

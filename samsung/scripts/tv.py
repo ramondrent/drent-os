@@ -12,8 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument('action', choices=['info', 'install', 'launch'])
 parser.add_argument('--host')
+parser.add_argument('--device', help='Optional device folder under .local/devices/<device>')
 args = parser.parse_args()
-config_file = ROOT / '.local/device.json'
+config_file = (ROOT / '.local/devices' / args.device / 'device.json') if args.device else (ROOT / '.local/device.json')
 config = json.loads(config_file.read_text()) if config_file.exists() else {}
 host = args.host or config.get('host')
 if not host:
@@ -50,6 +51,20 @@ else:
     widget = ROOT / 'dist/CleanFrame.wgt'
     if not widget.exists():
         raise SystemExit('Run npm run package first.')
+    setup_file = (ROOT / '.local/devices' / args.device / 'setup-record.json') if args.device else (ROOT / '.local/setup-record.json')
+    setup = json.loads(setup_file.read_text()) if setup_file.exists() else {}
+    profile_name = setup.get('signing_profile', 'FreestyleHome')
+    profiles_xml = ROOT / '.local/tizen-sdk-data/profile/profiles.xml'
+    if profiles_xml.exists():
+        for prof in XML.parse(profiles_xml).getroot().findall('profile'):
+            if prof.get('name') == profile_name:
+                for item in prof.findall('profileitem'):
+                    key_path = item.get('key')
+                    if key_path:
+                        dev_profile = Path(key_path).parent / 'device-profile.xml'
+                        if dev_profile.exists():
+                            run('-s', serial, 'push', str(dev_profile), '/home/owner/share/tmp/sdk_tools/device-profile.xml', quiet=True)
+                            break
     digest = hashlib.sha256(widget.read_bytes()).hexdigest()[:12]
     remote = '/home/owner/share/tmp/sdk_tools/CleanFrame-' + digest + '-' + str(time.time_ns()) + '.wgt'
     pushed = run('-s', serial, 'push', str(widget), remote)

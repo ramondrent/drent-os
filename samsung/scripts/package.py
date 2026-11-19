@@ -1,4 +1,5 @@
 """Build with public fonts and sign using this owner's Samsung SDK profile."""
+import argparse
 from pathlib import Path
 import json
 import subprocess
@@ -8,9 +9,15 @@ import zipfile
 from font_assets import write_widget_archive
 
 ROOT = Path(__file__).resolve().parents[1]
+parser = argparse.ArgumentParser()
+parser.add_argument('--device', help='Optional device folder under .local/devices/<device>')
+args = parser.parse_args()
 SDK = ROOT / '.local/tizen-sdk'
 CLI = SDK / 'tools/ide/bin/tizen'
-record = json.loads((ROOT / '.local/setup-record.json').read_text())
+record_path = (ROOT / '.local/devices' / args.device / 'setup-record.json') if args.device else (ROOT / '.local/setup-record.json')
+if not record_path.is_file():
+    record_path = ROOT / '.local/setup-record.json'
+record = json.loads(record_path.read_text())
 profile = ROOT / '.local/tizen-sdk-data/profile/profiles.xml'
 profile_name = record['signing_profile']
 profiles = XML.parse(profile).getroot()
@@ -25,7 +32,7 @@ subprocess.run([str(CLI), 'cli-config', 'default.profiles.path=' + str(profile)]
 dist = ROOT / 'dist'
 dist.mkdir(exist_ok=True)
 unsigned = dist / 'CleanFrame-unsigned.wgt'
-write_widget_archive(unsigned)
+write_widget_archive(unsigned, device=args.device)
 # A fresh output directory prevents a password prompt/failure reusing an old widget.
 signed_dir = Path(tempfile.mkdtemp(prefix='signed-', dir=dist))
 subprocess.run([str(CLI), 'package', '-t', 'wgt', '-s', profile_name, '-o', str(signed_dir), '--', str(unsigned)], check=True, timeout=90)

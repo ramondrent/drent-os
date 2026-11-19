@@ -16,12 +16,14 @@
   var KEYS = { 37: 'left', 38: 'up', 39: 'right', 40: 'down', 13: 'ok', 27: 'back', 8: 'back', 10009: 'back', 461: 'back' };
   var FULL = 'Home holds nine apps. Remove one first.', LAST = 'Home needs one app';
 
-  var PRIMARY_APPS = [
+  var DEFAULT_PRIMARY_APPS = [
     { id: 'kIciSQlYEM.plex', name: 'Plex', mark: false, appId: 'kIciSQlYEM.plex' },
     { id: 'youtube', name: 'YouTube', mark: true, appId: '9Ur5IzDKqV.TizenYouTube' },
     { id: 'iquaePhaki.npostart', name: 'NPO Start', mark: false, appId: 'iquaePhaki.npostart' },
     { id: '8H24TM2DAH.kijk', name: 'KIJK', mark: false, appId: '8H24TM2DAH.kijk' }
   ];
+  var RUNTIME_CFG = window.DrentConfig || window.RamonConfig || {};
+  var PRIMARY_APPS = Array.isArray(RUNTIME_CFG.homeApps) && RUNTIME_CFG.homeApps.length ? RUNTIME_CFG.homeApps.slice(0, CAP) : DEFAULT_PRIMARY_APPS;
   var PRIMARY = PRIMARY_APPS.map(function (a) { return a.id; }), APPS = PRIMARY_APPS.slice(), ALPHA = [];
   var WALLS = window.CleanFrameWallpapers || [{ id: 'misty', name: 'Misty coast', tone: 'light', ut: { tr: 'mist', br: 'mist' }, frostVeil: .20 }];
   var ADAPTIVE_INK = window.CleanFrameAdaptiveInk || {};
@@ -97,6 +99,10 @@
         copy = {}; Object.keys(a).forEach(function (key) { copy[key] = a[key]; });
         copy.name = alias && alias !== 'PlxNative' ? alias : 'Plex'; copy.nativeName = 'Plex'; return copy;
       }
+      if (a.appId === 'org.tizen.tv-viewer') {
+        copy = {}; Object.keys(a).forEach(function (key) { copy[key] = a[key]; });
+        copy.name = alias || (a.name === 'tv-viewer' ? 'HDMI' : a.name); copy.nativeName = 'HDMI'; return copy;
+      }
       if (!alias) return a;
       copy = {}; Object.keys(a).forEach(function (key) { copy[key] = a[key]; });
       copy.nativeName = a.name; copy.name = alias; return copy;
@@ -159,6 +165,7 @@
       + (maskSupport ? '<span class="mk" style="' + st + ';-webkit-mask-image:url(' + ICONS + id + '.svg);mask-image:url(' + ICONS + id + '.svg)"></span>' : '<img alt="" src="' + ICONS + id + '.svg" style="' + st + '">') + '</span>';
   }
   function appMark(a, w, h, size) {
+    if (a.appId === 'org.tizen.tv-viewer') return '<span class="mark hdmi-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="12.5" rx="2"/><path d="M8 20h8M12 17v3"/></svg></span>';
     if (a.appId === '9Ur5IzDKqV.TizenYouTube') return '<span class="mark youtube-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></span>';
     if (a.appId === 'kIciSQlYEM.plex') return '<span class="mark plex-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 48 48" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M12 4h13l14 20-14 20H12l14-20z"/></svg></span>';
     if (a.mark && (maskSupport || S.c.bg !== 'light')) return markHtml(a.brand || a.id, w, h, size);
@@ -364,7 +371,7 @@
       bg: pick(modern.bg, LOOK_VALUES.bg, legacyList ? 'dark' : 'photo'), layout: pick(modern.layout, LOOK_VALUES.layout, legacyList ? 'list' : 'dock'),
       apps: pick(modern.apps, LOOK_VALUES.apps, legacyList ? 'text' : 'both'), controls: pick(modern.controls, LOOK_VALUES.controls, 'icons'),
       focus: pick(modern.focus, LOOK_VALUES.focus, legacyList ? 'type' : 'glass'), material: pick(modern.material, LOOK_VALUES.material, 'soft'),
-      media: pick(modern.media || s.media, LOOK_VALUES.media, 'shown'),
+      media: pick(modern.media || s.media, LOOK_VALUES.media, RUNTIME_CFG.media === 'hidden' ? 'hidden' : 'shown'),
       font: pick(modern.font, LOOK_VALUES.font, 'manrope'), wall: wall(modern.wall || s.wallpaper) ? modern.wall || s.wallpaper : WALLS[0].id,
       names: cleanNames(s.names), home: h, recent: recent, lastApp: h.indexOf(s.lastApp) >= 0 ? s.lastApp : h[0],
       mode: pick(s.mode, MODES.map(function (m) { return m.id; }), 'fixed')

@@ -64,11 +64,11 @@ def font_overlay(root=ROOT, include_private=True):
     return assets
 
 
-def write_widget_archive(output, root=ROOT, include_private=True):
+def write_widget_archive(output, root=ROOT, include_private=True, device=None):
     """Create an unsigned archive without reading signing or device settings."""
     app = root / 'app'
     overlay = font_overlay(root, include_private)
-    runtime_config = root / '.local/runtime-config.json'
+    runtime_config = (root / '.local/devices' / device / 'runtime-config.json') if device else (root / '.local/runtime-config.json')
     if include_private and runtime_config.is_file():
         config = json.loads(runtime_config.read_text())
         overlay['runtime-config.js'] = ('window.DrentConfig = window.RamonConfig = ' + json.dumps(config) + ';\n').encode()

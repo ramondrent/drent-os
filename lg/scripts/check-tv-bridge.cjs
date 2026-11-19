@@ -74,10 +74,8 @@ fs.writeFileSync(path.join(tvRoot, 'stage-home.cjs'), '// old-stage');
 fs.writeFileSync(path.join(tvRoot, 'tv-bridge.cjs'), '// old-bridge');
 fs.writeFileSync(path.join(tvRoot, 'start-home.sh'), '# old-start');
 fs.chmodSync(path.join(tvRoot, 'start-home.sh'), 0o755);
-// A native-Home TV keeps its own undo wrapper beside the preserved original.
-var undoWrapper = '# native wrapper\nexec sh "$L/undo-home-upstream.sh" "$@"\n';
-fs.writeFileSync(path.join(tvRoot, 'undo-home.sh'), undoWrapper);
-fs.writeFileSync(path.join(tvRoot, 'undo-home-upstream.sh'), '# preserved original');
+fs.writeFileSync(path.join(tvRoot, 'undo-home.sh'), '# old-undo');
+fs.chmodSync(path.join(tvRoot, 'undo-home.sh'), 0o755);
 // The staged copy that Home loads; the stage stub below mirrors stage-home.sh.
 fs.mkdirSync(path.join(tvRoot, 'home-overlay'));
 fs.writeFileSync(path.join(tvRoot, 'home-overlay/index.html'), '<!doctype html><title>Old</title>');
@@ -96,7 +94,7 @@ var targetSha = 'abcdef1234567890abcdef1234567890abcdef12';
 fs.writeFileSync(path.join(archiveSrc, 'package.json'), JSON.stringify({ version: '0.6.2' }));
 // v2 is the first launcher that loads the token script; the archive carries an empty one.
 var emptyTokenScript = "window.DrentBridgeToken = window.DrentBridgeToken || '';\n";
-fs.writeFileSync(path.join(archiveSrc, 'app/index.html'), '<!doctype html><title>New</title><script src="bridge-token.js"></script>');
+fs.writeFileSync(path.join(archiveSrc, 'app/index.html'), '<!doctype html><title>New</title><script src="bridge-token.js"></script><script src="main.js"></script>');
 fs.writeFileSync(path.join(archiveSrc, 'app/bridge-token.js'), emptyTokenScript);
 fs.writeFileSync(path.join(archiveSrc, 'app/main.js'), '// v2-new');
 fs.writeFileSync(path.join(archiveSrc, 'app/style.css'), 'body{color:#fff}');
@@ -113,15 +111,39 @@ var tarFile = path.join(tmpDir, 'mock-github.tgz');
 cp.execFileSync('/bin/sh', ['-c', 'tar -czf "$1" -C "$2" .', 'sh', tarFile, path.join(tmpDir, 'archive-build')]);
 var tarBuffer = fs.readFileSync(tarFile);
 
+// A native-Home TV (older webOS) that began from the upstream backend: the service also runs
+// as helper.js, the boot scripts are the backend's, and undo-home.sh is a wrapper.
+var nativeRoot = path.join(tmpDir, 'native-home');
+cp.execFileSync('/bin/sh', ['-c', 'mkdir -p "$1/app" "$1/home-overlay"', 'sh', nativeRoot]);
+var undoWrapper = '# native wrapper\nexec sh "$L/undo-home-upstream.sh" "$@"\n';
+var backendReload = '# backend reload: closes the Home stand-in in webapp-mgr';
+var backendMarker = '{"version":"1.5.4","minService":"1.6.8"}';
+var officeDefaults = '/* office defaults */';
+fs.writeFileSync(path.join(nativeRoot, 'app/index.html'), '<!doctype html><title>Old</title>');
+['main.js', 'style.css', 'device.js', 'continue.js'].forEach(function (name) {
+  fs.writeFileSync(path.join(nativeRoot, 'app', name), '// old');
+});
+fs.writeFileSync(path.join(nativeRoot, 'app/office-defaults.js'), officeDefaults);
+fs.writeFileSync(path.join(nativeRoot, 'app/version.json'), backendMarker);
+fs.writeFileSync(path.join(nativeRoot, 'home-overlay/index.html'), '<!doctype html><title>Old</title>');
+fs.writeFileSync(path.join(nativeRoot, 'tv-bridge.cjs'), '// old-bridge');
+fs.writeFileSync(path.join(nativeRoot, 'helper.js'), '// old-bridge');
+fs.writeFileSync(path.join(nativeRoot, 'reload-home.sh'), backendReload);
+fs.writeFileSync(path.join(nativeRoot, 'undo-home.sh'), undoWrapper);
+fs.writeFileSync(path.join(nativeRoot, 'undo-home-upstream.sh'), '# preserved original');
+fs.writeFileSync(path.join(nativeRoot, 'home-full-webos-native.sh'), '# fullhome forwarder');
+fs.writeFileSync(path.join(nativeRoot, 'version.json'), JSON.stringify({ version: '0.6.1', commit: '2222222222222222222222222222222222222222', shortCommit: '2222222' }));
+fs.writeFileSync(path.join(nativeRoot, 'update-config.json'), JSON.stringify({ githubToken: 'test-token-123' }));
+
 var launches = [];
 var stageCalls = 0;
 var reloadCalls = 0;
 
-var inst = bridge.createTvBridge({
-  rootDir: tvRoot,
+function bridgeFor(root) { return bridge.createTvBridge({
+  rootDir: root,
   stage: function () {
     stageCalls++;
-    cp.execFileSync('/bin/sh', ['-c', 'cp -R "$1/app/." "$1/home-overlay/"', 'sh', tvRoot]);
+    cp.execFileSync('/bin/sh', ['-c', 'cp -R "$1/app/." "$1/home-overlay/"', 'sh', root]);
     return Promise.resolve();
   },
   reload: function () { reloadCalls++; return Promise.resolve(); },
@@ -180,7 +202,9 @@ var inst = bridge.createTvBridge({
     }
     throw new Error('Unexpected URI: ' + uri);
   }
-});
+}); }
+var inst = bridgeFor(tvRoot);
+var nativeInst = bridgeFor(nativeRoot);
 
 function listen() { return new Promise(function (resolve) { inst.server.listen(0, '127.0.0.1', resolve); }); }
 
@@ -273,10 +297,9 @@ function listen() { return new Promise(function (resolve) { inst.server.listen(0
   assert.strictEqual(mode(path.join(tvRoot, 'backup/service.prev/start-home.sh')), 0o755);
   assert(!fs.existsSync(path.join(tvRoot, 'reload-home.sh')));
   assert(!fs.existsSync(path.join(tvRoot, 'backup/service.prev/reload-home.sh')));
-  // The native-Home undo wrapper and its preserved original are left alone.
-  assert.strictEqual(read(path.join(tvRoot, 'undo-home.sh')), undoWrapper);
-  assert.strictEqual(read(path.join(tvRoot, 'undo-home-upstream.sh')), '# preserved original');
-  assert(!fs.existsSync(path.join(tvRoot, 'backup/service.prev/undo-home.sh')));
+  assert.strictEqual(read(path.join(tvRoot, 'undo-home.sh')), '# new-undo');
+  assert.strictEqual(read(path.join(tvRoot, 'backup/service.prev/undo-home.sh')), '# old-undo');
+  assert(!fs.existsSync(path.join(tvRoot, 'app/version.json')), 'no backend marker is invented');
 
   // D. The installed launcher now loads the token script, so the token is required.
   var token = read(path.join(tvRoot, 'bridge-token')).trim();
@@ -338,8 +361,8 @@ function listen() { return new Promise(function (resolve) { inst.server.listen(0
   assert.strictEqual(mode(path.join(tvRoot, 'start-home.sh')), 0o755);
   assert(!fs.existsSync(path.join(tvRoot, 'reload-home.sh')));
   assert(!fs.existsSync(path.join(tvRoot, 'backup/service.prev')));
-  assert.strictEqual(read(path.join(tvRoot, 'undo-home.sh')), undoWrapper);
-  assert.strictEqual(read(path.join(tvRoot, 'undo-home-upstream.sh')), '# preserved original');
+  assert.strictEqual(read(path.join(tvRoot, 'undo-home.sh')), '# old-undo');
+  assert.strictEqual(mode(path.join(tvRoot, 'undo-home.sh')), 0o755);
 
   // The restored launcher predates the token: it must keep working with this service.
   res = await httpRequest(port, 'GET', '/api/apps');
@@ -348,8 +371,44 @@ function listen() { return new Promise(function (resolve) { inst.server.listen(0
   assert.strictEqual(res.status, 403);
 
   await new Promise(function (resolve) { inst.server.close(resolve); });
+
+  // F. A native-Home TV keeps the backend's boot scripts and its local frontend files.
+  await new Promise(function (resolve) { nativeInst.server.listen(0, '127.0.0.1', resolve); });
+  port = nativeInst.server.address().port;
+  stageCalls = 0;
+  res = await httpRequest(port, 'POST', '/api/update', {});
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.json.updated, true);
+  assert.strictEqual(stageCalls, 1);
+  assert.strictEqual(read(path.join(nativeRoot, 'app/main.js')), '// v2-new');
+  assert.strictEqual(read(path.join(nativeRoot, 'tv-bridge.cjs')), '// new-bridge');
+  assert.strictEqual(read(path.join(nativeRoot, 'helper.js')), '// new-bridge', 'the service file the boot script starts is updated too');
+  assert.strictEqual(read(path.join(nativeRoot, 'backup/service.prev/helper.js')), '// old-bridge');
+  assert.strictEqual(read(path.join(nativeRoot, 'reload-home.sh')), backendReload, 'the stand-in aware reload script is kept');
+  assert.strictEqual(read(path.join(nativeRoot, 'undo-home.sh')), undoWrapper);
+  assert.strictEqual(read(path.join(nativeRoot, 'undo-home-upstream.sh')), '# preserved original');
+  assert(!fs.existsSync(path.join(nativeRoot, 'start-home.sh')));
+  ['start-home.sh', 'reload-home.sh', 'undo-home.sh'].forEach(function (name) {
+    assert(!fs.existsSync(path.join(nativeRoot, 'backup/service.prev', name)), name + ' was not replaced, so it is not backed up');
+  });
+  assert.strictEqual(read(path.join(nativeRoot, 'app/version.json')), backendMarker, 'the backend frontend marker survives');
+  assert.strictEqual(read(path.join(nativeRoot, 'app/office-defaults.js')), officeDefaults);
+  var nativeIndex = read(path.join(nativeRoot, 'app/index.html'));
+  assert(nativeIndex.indexOf('<script src="office-defaults.js"></script>\n<script src="main.js"></script>') >= 0);
+  assert.strictEqual(read(path.join(nativeRoot, 'home-overlay/index.html')), nativeIndex);
+  var nativeToken = read(path.join(nativeRoot, 'bridge-token')).trim();
+  assert.strictEqual(read(path.join(nativeRoot, 'home-overlay/bridge-token.js')), 'window.DrentBridgeToken = "' + nativeToken + '";\n');
+  res = await httpRequest(port, 'POST', '/api/update/rollback?t=' + nativeToken, {});
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(read(path.join(nativeRoot, 'app/main.js')), '// old');
+  assert.strictEqual(read(path.join(nativeRoot, 'helper.js')), '// old-bridge');
+  assert.strictEqual(read(path.join(nativeRoot, 'reload-home.sh')), backendReload);
+  assert.strictEqual(read(path.join(nativeRoot, 'undo-home.sh')), undoWrapper);
+  assert.strictEqual(read(path.join(nativeRoot, 'app/version.json')), backendMarker);
+  await new Promise(function (resolve) { nativeInst.server.close(resolve); });
+
   cp.execFileSync('/bin/sh', ['-c', 'rm -rf "$1"', 'sh', tmpDir]);
-  console.log('PASS: tv-bridge request guards, launcher token, self-update, service backup, rollback and stage-home unit checks');
+  console.log('PASS: tv-bridge request guards, launcher token, self-update, service backup, native-Home boot scripts, rollback and stage-home unit checks');
 })().catch(function (err) {
   console.error(err);
   process.exit(1);

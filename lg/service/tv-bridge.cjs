@@ -396,6 +396,11 @@ function createTvBridge(options) {
         'if [ -f "$R/app/office-defaults.js" ]; then',
         '  cp -p "$R/app/office-defaults.js" "$R/app.next/office-defaults.js"',
         'fi',
+        // An installation that began from the upstream backend keeps that backend's frontend
+        // version marker; its own bootstrap reads it before replacing the launcher.
+        'if [ -f "$R/app/version.json" ] && [ ! -e "$R/app.next/version.json" ]; then',
+        '  cp -p "$R/app/version.json" "$R/app.next/version.json"',
+        'fi',
         'find "$R/app.next" -type d -exec chmod 755 {} \\;',
         'find "$R/app.next" -type f -exec chmod 644 {} \\;',
         'if [ -d "$R/app" ] && [ -f "$R/app/index.html" ]; then',
@@ -422,11 +427,15 @@ function createTvBridge(options) {
         '  cp "$SRC/service/tv-bridge.cjs" "$R/helper.js"',
         '  chmod 644 "$R/helper.js"',
         'fi',
+        // A native-Home TV (older webOS) boots through the backend's own scripts: its reload script
+        // drives the Home stand-in and its undo script is a wrapper beside the preserved original.
+        // The scripts in this repository do neither, so none of them is installed there.
+        'NATIVE=0',
+        'if [ -f "$R/undo-home-upstream.sh" ] || [ -f "$R/home-full-webos-native.sh" ] || grep -q undo-home-upstream "$R/undo-home.sh" 2>/dev/null; then',
+        '  NATIVE=1',
+        'fi',
         'for s in start-home.sh reload-home.sh undo-home.sh; do',
-        // A native-Home TV installs its own undo wrapper beside the preserved original: leave both.
-        '  if [ "$s" = undo-home.sh ] && { [ -f "$R/undo-home-upstream.sh" ] || grep -q undo-home-upstream "$R/undo-home.sh" 2>/dev/null; }; then',
-        '    continue',
-        '  fi',
+        '  [ "$NATIVE" = 0 ] || continue',
         '  if [ -f "$SRC/service/$s" ] && [ -f "$R/$s" ]; then',
         '    keep "$s"',
         '    cp "$SRC/service/$s" "$R/$s"',

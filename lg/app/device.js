@@ -12,14 +12,53 @@
 
   var BASE = 'http://127.0.0.1:8765';
   var BRANDS = { netflix: 'netflix', 'youtube.leanback.v4': 'youtube', amazon: 'primevideo', 'com.disney.disneyplus-prod': 'disneyplus', 'com.apple.appletv': 'appletv', 'com.webos.app.hdmi1': 'appletv', spotify: 'spotify' };
-  function request(path, payload, done, timeoutMs) {
-    var x = new XMLHttpRequest(), finished = false;
+  /* The local services accept requests only with the token they write into bridge-token.js.
+     It travels in the URL: a custom header would need a preflight an older service rejects. */
+  var tokenWaiters = null;
+  function token() { return typeof window.DrentBridgeToken === 'string' ? window.DrentBridgeToken : ''; }
+  function withToken(url) {
+    var t = token();
+    return t ? url + (url.indexOf('?') < 0 ? '?' : '&') + 't=' + encodeURIComponent(t) : url;
+  }
+  /* A service that rejects the token has just rewritten the script. Load it again once;
+     done(true) means a different token is now available and the request can be repeated. */
+  function reloadToken(used, done) {
+    var s, timer, finished = false;
+    if (token() !== used) { done(!!token()); return; }
+    if (tokenWaiters) { tokenWaiters.push(done); return; }
+    tokenWaiters = [done];
+    function finish() {
+      var waiting = tokenWaiters, changed = !!token() && token() !== used, i;
+      if (finished) return;
+      finished = true; clearTimeout(timer); tokenWaiters = null;
+      if (s.parentNode) s.parentNode.removeChild(s);
+      for (i = 0; i < waiting.length; i++) waiting[i](changed);
+    }
+    s = document.createElement('script');
+    s.onload = finish; s.onerror = finish;
+    timer = setTimeout(finish, 3000);
+    s.src = 'bridge-token.js?r=' + Date.now();
+    document.body.appendChild(s);
+  }
+  window.DrentBridge = { url: withToken, token: token, reload: reloadToken };
+
+  function request(path, payload, done, timeoutMs, retried) {
+    var x = new XMLHttpRequest(), finished = false, used = token();
     function finish(err, value) { if (!finished) { finished = true; done(err, value); } }
-    x.open(payload === null ? 'GET' : 'POST', BASE + path, true);
+    x.open(payload === null ? 'GET' : 'POST', withToken(BASE + path), true);
     x.timeout = timeoutMs || 8000;
     x.onload = function () {
       var data;
       try { data = JSON.parse(x.responseText); } catch (e) { finish({message:'Invalid response from the TV service.'}); return; }
+      if (x.status === 403 && data.code === 'bridge-token') {
+        var rejected = {message:'The TV service did not accept this launcher.', detail:'Restart the TV, or reinstall DrentOS.'};
+        if (retried) { finish(rejected); return; }
+        reloadToken(used, function (changed) {
+          if (changed) request(path, payload, finish, timeoutMs, true);
+          else finish(rejected);
+        });
+        return;
+      }
       if (x.status < 200 || x.status >= 300 || data.returnValue === false || data.error) {
         finish({message:'The TV could not complete this action.', detail:String(data.errorText || data.error || x.status)}); return;
       }

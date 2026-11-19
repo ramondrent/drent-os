@@ -7,8 +7,11 @@
   return {title:title,root:root,items:[],index:0,signature:'',error:''};
  });
  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
- function request(path,post,done){var x=new XMLHttpRequest();x.open(post?'POST':'GET',base+path,true);x.timeout=30000;
- x.onload=function(){var d;try{d=JSON.parse(x.responseText);}catch(e){done('Invalid media response');return;}done(x.status===200?null:d.error||'Media service unavailable',d);};
+ // The media service may require the launcher token; a rejected token is reloaded once.
+ function request(path,post,done,retried){var bridge=window.DrentBridge,used=bridge?bridge.token():'',x=new XMLHttpRequest();x.open(post?'POST':'GET',bridge?bridge.url(base+path):base+path,true);x.timeout=30000;
+ x.onload=function(){var d;try{d=JSON.parse(x.responseText);}catch(e){done('Invalid media response');return;}
+  if(x.status===403&&d.code==='bridge-token'&&bridge&&!retried){bridge.reload(used,function(changed){if(changed)request(path,post,done,true);else done('Media service unavailable',d);});return;}
+  done(x.status===200?null:d.error||'Media service unavailable',d);};
  x.onerror=function(){done('Plex connection unavailable');};x.ontimeout=function(){done('Plex did not respond. Try again.');};if(post)x.setRequestHeader('X-CleanFrame','1');x.send();}
  function refresh(force){if(loading||(!force&&Date.now()-last<60000))return;loading=true;notify();request('/continue',false,function(err,data){loading=false;last=Date.now();loaded=true;
  error=err||(!data.configured?'Connect Plex to see your shows and movies':'');

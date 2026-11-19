@@ -32,6 +32,21 @@ This port is self-contained on a rooted webOS TV at `/media/developer/drent-os` 
 
 In **Settings → TV**, the launcher can check `ramondrent/drent-os` (`main`) on GitHub and install updates directly on the TV through `service/tv-bridge.cjs` (`GET /api/update`, `POST /api/update`, `POST /api/update/rollback`). Installing an update backs up the previous `app/` directory to `backup/app.prev`, preserves any locally installed `app/assets/private-fonts/` overlay, records the installed commit in `version.json`, re-stages `home-overlay/`, and reloads Home. When `backup/app.prev` is present, **Revert to previous version** restores the prior build.
 
+Installing an update also copies the service and boot scripts it replaces (`tv-bridge.cjs`, `helper.js`, `stage-home.cjs`, `start-home.sh`, `reload-home.sh`, `undo-home.sh`) to `backup/service.prev`, and **Revert to previous version** restores them together with `backup/app.prev`. A native-Home TV's `undo-home.sh` wrapper and its `undo-home-upstream.sh` are never replaced. The running `tv-bridge.cjs` process keeps its loaded code until the TV restarts. The first update that introduces this behaviour is installed by the older service, so it has no service backup of its own: keep a manual copy of those scripts before installing it.
+
+### Local service request checks
+
+Both services listen on loopback only, but any page in the TV browser or a hosted web app can still send requests to loopback. The services therefore refuse:
+
+- a `Host` that is not `127.0.0.1`, `localhost` or `[::1]` (DNS rebinding);
+- an `Origin` other than the launcher's local-file origin (none, `null` or `file:`); the media bridge also accepts its configured `previewOrigin`;
+- on the TV service, a `POST` that is not `application/json`;
+- any request without the launcher token, once the installed launcher loads `bridge-token.js`.
+
+`null` is also the origin of a sandboxed frame on any website, which is why the token exists. `tv-bridge.cjs` creates it once in `<root>/bridge-token` (mode 600) and writes `bridge-token.js` into `app/` and `home-overlay/` at start, after an update or rollback, and whenever a request is rejected. The launcher sends it as the `t` query parameter and, after a rejection, reloads the script once and repeats the request. `media-bridge.cjs` reads the same token file from the launcher root (`launcherRoot` in its config, otherwise the first existing `/media/developer/drent-os`, `ramon-os` or `cleanyourtv`). Icon and artwork images load without the token. The source and public builds carry an empty `app/bridge-token.js`; a real token exists only on the TV, where any locally installed app can read it. It protects against web content, not against other software installed on the TV.
+
+A launcher from before this change sends no token, and a service that finds no `bridge-token.js` reference in the installed `index.html` does not ask for one, so a rollback cannot lock Home out. For recovery, create `<root>/DISABLE_BRIDGE_AUTH` to switch the token requirement off in both services; the `Host`, `Origin` and content-type checks remain. The media bridge is installed separately and is not replaced by the on-TV updater: reinstall it to apply these checks there.
+
 During QuickStart+ silent boots into `Active Standby`, `service/start-home.sh` preserves the CRIU-preloaded HDMI input (`com.webos.app.hdmi1` / previous input) and updates `/tmp/checkpoint/manager_pid` after restarting `sam` so `com.webos.app.home` is never forced into the foreground during `Active Standby`.
 
 For an established installation, back up the changed files before copying them to `/media/developer/drent-os` (or `/media/developer/ramon-os`). Every public frontend resource must be readable by the Home renderer (files 644, directories 755); private service configuration stays 600 inside its 700 directory. Run `stage-home.sh`, verify overlay permissions, then `reload-home.sh`. Service changes require restarting `tv-bridge.cjs` or `media-bridge.cjs`. Keep the pre-change files and original native Home configuration (`backup/home-appinfo.orig.json`) for recovery.

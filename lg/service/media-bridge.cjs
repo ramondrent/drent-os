@@ -33,7 +33,31 @@ function selectPlayer(apps){
  if(apps.some(app=>app.id==='com.beb.plxnative'))return {id:'com.beb.plxnative',name:'PlxNative',mode:'resume'};
  return null;
 }
+// A rebinding page reaches 127.0.0.1 under its own hostname. Non-browser clients may omit Host.
+function loopbackHost(value){if(value===undefined)return true;const host=String(value).toLowerCase().replace(/:\d+$/,'');return host==='127.0.0.1'||host==='localhost'||host==='[::1]';}
+// The TV bridge writes a launcher token beside the launcher's files. "null" is also the Origin
+// of a sandboxed frame on any website, so require that token once the installed launcher sends it.
+// Without a token-aware launcher (or with DISABLE_BRIDGE_AUTH) the earlier origin guard applies alone.
+function launcherToken(config){
+ const roots=config.launcherRoot?[config.launcherRoot]:['/media/developer/drent-os','/media/developer/ramon-os','/media/developer/cleanyourtv'];
+ let at=0,token='';
+ return ()=>{
+  if(Date.now()-at<5000)return token;
+  at=Date.now();token='';
+  try{
+   const root=roots.find(dir=>fs.existsSync(dir));
+   if(!root||fs.existsSync(root+'/DISABLE_BRIDGE_AUTH'))return token;
+   const index=fs.existsSync(root+'/home-overlay/index.html')?root+'/home-overlay/index.html':root+'/app/index.html';
+   if(fs.readFileSync(index,'utf8').indexOf('bridge-token.js')<0)return token;
+   const saved=fs.readFileSync(root+'/bridge-token','utf8').trim();
+   if(/^[0-9a-f]{32,128}$/.test(saved))token=saved;
+  }catch(e){}
+  return token;
+ };
+}
+function sameSecret(given,expected){const a=Buffer.from(String(given||'')),b=Buffer.from(String(expected));return a.length===b.length&&require('crypto').timingSafeEqual(a,b);}
 function createBridge(config,call=request,launch=launchApp,discover=installedApps){
+ const requiredToken=launcherToken(config);
  async function player(){try{return {player:selectPlayer(await discover()),playerError:null};}catch(e){return {player:null,playerError:'Unable to check installed Plex apps. Try again.'};}}
  async function capabilities(){const state=await player();return {...state,playbackConfigured:!!state.player};}
  const describeItems=(items,state)=>items.map(item=>({...item,playable:!!state.player,player:state.player&&state.player.name,playbackMode:state.player?state.player.mode:'unavailable'}));
@@ -74,11 +98,14 @@ function createBridge(config,call=request,launch=launchApp,discover=installedApp
  async function findItem(id){const data=await list();let item=data.items.find(i=>i.id===id);if(!item){const r=await recent();item=r.movies.concat(r.shows).find(i=>i.id===id);}return item;}
  const server=http.createServer(async(req,res)=>{
   const origin=req.headers.origin;
-  if(origin&&origin!=='null'&&origin!==config.previewOrigin){res.writeHead(403);return res.end();}
+  if(!loopbackHost(req.headers.host)||(origin&&origin!=='null'&&origin!==config.previewOrigin)){res.writeHead(403);return res.end();}
   const cors={'Access-Control-Allow-Origin':origin||'null','Vary':'Origin','Cache-Control':'no-store'};
   const send=(code,data)=>{res.writeHead(code,{...cors,'Content-Type':'application/json'});res.end(JSON.stringify(data));};
   if(req.method==='OPTIONS'){res.writeHead(204,{...cors,'Access-Control-Allow-Headers':'Content-Type, X-CleanFrame','Access-Control-Allow-Methods':'GET, POST'});return res.end();}
   let u;try{u=new URL(req.url,'http://localhost');}catch(e){return send(400,{error:'Invalid URL'});}
+  // Artwork is loaded by <img>, which cannot carry the token.
+  const expected=/^\/art\/\d+$/.test(u.pathname)?'':requiredToken();
+  if(expected&&!sameSecret(u.searchParams.get('t'),expected))return send(403,{error:'Launcher authorization required',code:'bridge-token'});
   try {
    if(req.method==='GET'&&u.pathname==='/aerial'){const a=config.aerial||{};return send(200,{enabled:a.enabled===true,idleSeconds:a.idleSeconds||60,urls:(a.urls||[]).filter(u=>typeof u==='string'&&/^https:\/\//.test(u)).slice(0,12)});}
    if(req.method==='GET'&&u.pathname==='/player')return send(200,await capabilities());

@@ -36,6 +36,34 @@ function fetch(url,options={}){return new Promise((resolve,reject)=>{
  discoveryFails=false;apps=[{id:'com.beb.plxnative',title:'My alias'}];assert.equal((await play('1')).status,200);
  assert.equal(launches[launches.length-1].id,'com.beb.plxnative');
  assert(!JSON.stringify(launches).includes('SECRET'));
- console.log('PASS: Plex progress, credential isolation, request guards, both players, install/removal, discovery errors, per-click routing and recovery');
+ // A rebinding page reaches the loopback address under its own hostname.
+ assert.equal((await fetch(url+'/continue',{headers:{Host:'attacker.example'}})).status,403);
+ assert.equal((await fetch(url+'/continue',{headers:{Host:'localhost:8766'}})).status,200);
+ // Launcher token: required once the installed launcher loads the token script.
+ const fs=require('fs'),root=fs.mkdtempSync(require('path').join(require('os').tmpdir(),'drent-media-'));
+ try{
+  fs.mkdirSync(root+'/app');fs.writeFileSync(root+'/app/index.html','<script src="bridge-token.js"></script>');
+  const token='ab'.repeat(24);fs.writeFileSync(root+'/bridge-token',token+'\n');
+  const guarded=createBridge({plexToken:'SECRET',plexUrl:'http://plex',launcherRoot:root},fake,async params=>{launches.push(params);},async()=>[{id:'com.beb.plxnative'}]);
+  await new Promise(r=>guarded.server.listen(0,'127.0.0.1',r));
+  try{
+   const g='http://127.0.0.1:'+guarded.server.address().port,count=launches.length,h={'X-CleanFrame':'1',Origin:'null'};
+   // A sandboxed frame on any website also has the null origin, but not the token.
+   let denied=await fetch(g+'/continue',{headers:{Origin:'null'}});assert.equal(denied.status,403);assert.equal((await denied.json()).code,'bridge-token');
+   for(const path of ['/recent','/player','/aerial','/continue?t='+'0'.repeat(48)])assert.equal((await fetch(g+path)).status,403);
+   assert.equal((await fetch(g+'/play/1',{method:'POST',headers:h})).status,403);assert.equal(launches.length,count);
+   assert.equal((await fetch(g+'/play/1',{method:'OPTIONS',headers:{Origin:'null'}})).status,204);
+   assert.equal((await (await fetch(g+'/continue?t='+token)).json()).items.length,1);
+   assert.equal((await fetch(g+'/play/1?t='+token,{method:'POST',headers:h})).status,200);assert.equal(launches.length,count+1);
+   assert.equal((await fetch(g+'/play/20?action=open&t='+token,{method:'POST',headers:h})).status,200);
+   assert.notEqual((await fetch(g+'/art/1')).status,403);
+  }finally{guarded.server.close();}
+  // A launcher that predates the token keeps working with the earlier origin guard.
+  fs.writeFileSync(root+'/app/index.html','<!doctype html>');
+  const legacy=createBridge({plexToken:'SECRET',plexUrl:'http://plex',launcherRoot:root},fake,async()=>{},async()=>[]);
+  await new Promise(r=>legacy.server.listen(0,'127.0.0.1',r));
+  try{assert.equal((await fetch('http://127.0.0.1:'+legacy.server.address().port+'/continue')).status,200);}finally{legacy.server.close();}
+ }finally{require('child_process').execFileSync('/bin/rm',['-rf',root]);}
+ console.log('PASS: Plex progress, credential isolation, request guards, launcher token, both players, install/removal, discovery errors, per-click routing and recovery');
  }finally{b.server.close();}
 })().catch(e=>{console.error(e);process.exit(1);});

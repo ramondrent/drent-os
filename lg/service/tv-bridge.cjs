@@ -5,9 +5,12 @@ const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const cp = require('child_process');
+const crypto = require('crypto');
 const urlMod = require('url');
 
 const PORT = 8765;
+// A launcher that loads this script receives the request token; older launchers do not send one.
+const TOKEN_SCRIPT = 'bridge-token.js';
 const DEFAULT_ROOT = fs.existsSync('/media/developer/drent-os')
   ? '/media/developer/drent-os'
   : (fs.existsSync('/media/developer/ramon-os') ? '/media/developer/ramon-os' : '/media/developer/cleanyourtv');
@@ -108,6 +111,27 @@ function readJsonSafe(file, fallback) {
   }
 }
 
+/* Request guards. Only the launcher on this TV may use the service: a page in the TV browser
+   or a hosted web app must not be able to launch apps or start an update. */
+function loopbackHost(value) {
+  // A rebinding page reaches 127.0.0.1 under its own hostname. Non-browser clients may omit Host.
+  if (value === undefined) return true;
+  const host = String(value).toLowerCase().replace(/:\d+$/, '');
+  return host === '127.0.0.1' || host === 'localhost' || host === '[::1]';
+}
+
+function launcherOrigin(value) {
+  // The launcher is a local file: its requests carry no Origin, "null" or a file: origin.
+  if (value === undefined || value === 'null') return true;
+  return String(value).toLowerCase().indexOf('file:') === 0;
+}
+
+function sameSecret(given, expected) {
+  const a = Buffer.from(String(given === undefined ? '' : given));
+  const b = Buffer.from(String(expected));
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
 function readBody(req) {
   return new Promise(function (resolve, reject) {
     let data = '';
@@ -150,6 +174,79 @@ function createTvBridge(options) {
   let latestCache = null;
   let latestCacheAt = 0;
   let busyUpdating = false;
+
+  /* Launcher token. "null" is also the Origin of a sandboxed frame on any website, so the
+     origin alone cannot identify the launcher. The token is written beside the launcher's
+     own files, which remote web content cannot read. */
+  const tokenFile = path.join(rootDir, 'bridge-token');
+  let bridgeToken = '';
+  let markerCache = {};
+  let lastRepair = 0;
+
+  function usesToken(indexFile) {
+    let stat;
+    try { stat = fs.statSync(indexFile); } catch (_) { return false; }
+    const stamp = stat.mtimeMs + ':' + stat.size;
+    const cached = markerCache[indexFile];
+    if (cached && cached.stamp === stamp) return cached.value;
+    let value = false;
+    try { value = fs.readFileSync(indexFile, 'utf8').indexOf(TOKEN_SCRIPT) >= 0; } catch (_) {}
+    markerCache[indexFile] = { stamp: stamp, value: value };
+    return value;
+  }
+
+  function loadToken() {
+    if (bridgeToken) return bridgeToken;
+    try {
+      const saved = fs.readFileSync(tokenFile, 'utf8').trim();
+      if (/^[0-9a-f]{32,128}$/.test(saved)) bridgeToken = saved;
+    } catch (_) {}
+    if (!bridgeToken) {
+      try {
+        const fresh = crypto.randomBytes(24).toString('hex');
+        fs.writeFileSync(tokenFile, fresh + '\n', { mode: 0o600 });
+        fs.chmodSync(tokenFile, 0o600);
+        bridgeToken = fresh;
+      } catch (_) {}
+    }
+    return bridgeToken;
+  }
+
+  // Keep the token script current in the installed frontend and in the staged Home copy.
+  function publishToken() {
+    const token = loadToken();
+    if (!token) return false;
+    const content = 'window.DrentBridgeToken = ' + JSON.stringify(token) + ';\n';
+    let ok = true;
+    ['app', 'home-overlay'].forEach(function (dir) {
+      if (!usesToken(path.join(rootDir, dir, 'index.html'))) return;
+      const target = path.join(rootDir, dir, TOKEN_SCRIPT);
+      try {
+        let current = null;
+        try { current = fs.readFileSync(target, 'utf8'); } catch (_) {}
+        if (current !== content) fs.writeFileSync(target, content);
+        // The Home renderer does not run as root.
+        fs.chmodSync(target, 0o644);
+      } catch (_) {
+        ok = false;
+      }
+    });
+    return ok;
+  }
+
+  /* Returns the token a request must carry, or '' when the installed launcher predates the
+     token (for example after a rollback) so that an older frontend is never locked out. */
+  function requiredToken() {
+    if (fs.existsSync(path.join(rootDir, 'DISABLE_BRIDGE_AUTH'))) return '';
+    const staged = path.join(rootDir, 'home-overlay/index.html');
+    const index = fs.existsSync(staged) ? staged : path.join(rootDir, 'app/index.html');
+    return usesToken(index) ? loadToken() : '';
+  }
+
+  function prepareAuth() {
+    const published = publishToken();
+    return { token: !!bridgeToken, published: published, enforced: !!requiredToken() };
+  }
 
   function readInstalledVersion() {
     const vFile = path.join(rootDir, 'version.json');
@@ -309,18 +406,29 @@ function createTvBridge(options) {
         '  rm -rf "$R/app"',
         'fi',
         'mv "$R/app.next" "$R/app"',
+        // Keep the exact service and boot scripts this update replaces, paired with app.prev.
+        'rm -rf "$R/backup/service.prev"',
+        'mkdir -p "$R/backup/service.prev"',
+        'keep() { cp -p "$R/$1" "$R/backup/service.prev/$1"; }',
         'for f in stage-home.cjs tv-bridge.cjs; do',
         '  if [ -f "$SRC/service/$f" ] && [ -f "$R/$f" ]; then',
+        '    keep "$f"',
         '    cp "$SRC/service/$f" "$R/$f"',
         '    chmod 644 "$R/$f"',
         '  fi',
         'done',
         'if [ -f "$SRC/service/tv-bridge.cjs" ] && [ -f "$R/helper.js" ]; then',
+        '  keep helper.js',
         '  cp "$SRC/service/tv-bridge.cjs" "$R/helper.js"',
         '  chmod 644 "$R/helper.js"',
         'fi',
         'for s in start-home.sh reload-home.sh undo-home.sh; do',
+        // A native-Home TV installs its own undo wrapper beside the preserved original: leave both.
+        '  if [ "$s" = undo-home.sh ] && { [ -f "$R/undo-home-upstream.sh" ] || grep -q undo-home-upstream "$R/undo-home.sh" 2>/dev/null; }; then',
+        '    continue',
+        '  fi',
         '  if [ -f "$SRC/service/$s" ] && [ -f "$R/$s" ]; then',
+        '    keep "$s"',
         '    cp "$SRC/service/$s" "$R/$s"',
         '    chmod 755 "$R/$s"',
         '  fi',
@@ -337,6 +445,8 @@ function createTvBridge(options) {
         }
       }
       fs.writeFileSync(path.join(rootDir, 'version.json'), JSON.stringify(newVersion, null, 2) + '\n');
+      // The archive carries an empty token script: write this TV's token before staging.
+      publishToken();
       await runStage();
       setTimeout(function () { runReload(); }, 250);
 
@@ -382,10 +492,27 @@ function createTvBridge(options) {
         '  mv "$R/backup/version.prev.json" "$R/version.json"',
         'else',
         '  rm -f "$R/version.json"',
+        'fi',
+        // Restore the service and boot scripts that the reverted update replaced.
+        'if [ -d "$R/backup/service.prev" ]; then',
+        '  for f in stage-home.cjs tv-bridge.cjs helper.js; do',
+        '    if [ -f "$R/backup/service.prev/$f" ]; then',
+        '      cp -p "$R/backup/service.prev/$f" "$R/$f"',
+        '      chmod 644 "$R/$f"',
+        '    fi',
+        '  done',
+        '  for s in start-home.sh reload-home.sh undo-home.sh; do',
+        '    if [ -f "$R/backup/service.prev/$s" ]; then',
+        '      cp -p "$R/backup/service.prev/$s" "$R/$s"',
+        '      chmod 755 "$R/$s"',
+        '    fi',
+        '  done',
+        '  rm -rf "$R/backup/service.prev"',
         'fi'
       ].join('\n');
 
       await execShell(rollbackScript, [rootDir], 15000);
+      publishToken();
       await runStage();
       const installed = readInstalledVersion();
       setTimeout(function () { runReload(); }, 250);
@@ -425,19 +552,38 @@ function createTvBridge(options) {
   }
 
   const server = http.createServer(async function (req, res) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
+    const sendJson = function (obj, code) {
+      res.writeHead(code || 200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+      res.end(JSON.stringify(obj));
+    };
+    const origin = req.headers.origin;
+    if (!loopbackHost(req.headers.host) || !launcherOrigin(origin)) {
+      return sendJson({ returnValue: false, errorText: 'Request not allowed' }, 403);
+    }
+    res.setHeader('Access-Control-Allow-Origin', origin || 'null');
+    res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Headers', 'content-type');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       return res.end();
     }
-    const sendJson = function (obj, code) {
-      res.writeHead(code || 200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-      res.end(JSON.stringify(obj));
-    };
     const parsedUrl = urlMod.parse(String(req.url || '/'), true);
     const pathname = parsedUrl.pathname || '/';
+    // A JSON POST cannot be sent by a form or as a "simple" cross-origin request.
+    if (req.method === 'POST' && !/^application\/json\b/i.test(req.headers['content-type'] || '')) {
+      return sendJson({ returnValue: false, errorText: 'JSON request required' }, 415);
+    }
+    // Icons are loaded by <img>, which cannot carry the token; /api/log does nothing.
+    const openRoute = req.method === 'GET' && (pathname === '/api/log' || /^\/icon\/[\w.-]+$/.test(pathname));
+    if (!openRoute) {
+      const expected = requiredToken();
+      if (expected && !sameSecret(parsedUrl.query && parsedUrl.query.t, expected)) {
+        // Rewrite the token script (at most every two seconds) so the launcher can reload it and retry.
+        if (Date.now() - lastRepair > 2000) { lastRepair = Date.now(); publishToken(); }
+        return sendJson({ returnValue: false, errorText: 'Launcher authorization required', code: 'bridge-token' }, 403);
+      }
+    }
     try {
       if (req.method === 'GET' && pathname === '/api/log') {
         return sendJson({ returnValue: true });
@@ -492,7 +638,7 @@ function createTvBridge(options) {
     }
   });
 
-  return { server: server, listApps: listApps, getUpdateStatus: getUpdateStatus, applyUpdate: applyUpdate, rollbackUpdate: rollbackUpdate };
+  return { server: server, listApps: listApps, getUpdateStatus: getUpdateStatus, applyUpdate: applyUpdate, rollbackUpdate: rollbackUpdate, prepareAuth: prepareAuth };
 }
 
 module.exports = { createTvBridge: createTvBridge, defaultLuna: defaultLuna, defaultFetchUrl: defaultFetchUrl };
@@ -500,7 +646,9 @@ module.exports = { createTvBridge: createTvBridge, defaultLuna: defaultLuna, def
 if (require.main === module) {
   const port = Number(process.env.DRENT_OS_PORT || process.env.RAMON_OS_PORT) || PORT;
   const bridge = createTvBridge();
+  // Write the token script before accepting requests, so Home can load it at boot.
+  const auth = bridge.prepareAuth();
   bridge.server.listen(port, '127.0.0.1', function () {
-    console.log('DrentOS TV bridge listening on 127.0.0.1:' + port);
+    console.log('DrentOS TV bridge listening on 127.0.0.1:' + port + ' (launcher token ' + (auth.enforced ? 'required' : auth.token ? 'not required by the installed launcher' : 'unavailable') + ')');
   });
 }

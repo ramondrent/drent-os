@@ -27,7 +27,7 @@ python3 tools/build-apps.py
 
 `npm run check` in either platform fails if a built folder is out of date. The built folders are kept in Git because the LG on-TV updater installs `lg/app` directly from the repository.
 
-A feature is written once in `core/app`. Where a TV family cannot support something, the launcher hides it based on what that platform's `device.js` provides. The on-TV update screen, for example, appears only where the device adapter can install updates, which today is LG.
+A feature is written once in `core/app`. Where a TV family cannot support something, the launcher hides it based on what that platform's `device.js` provides. The on-TV update screen, for example, appears wherever the device adapter can install updates. LG replaces its files through the on-TV service; Samsung downloads the launcher's code into the app's own storage (see the [Samsung guide](samsung/README.md#on-tv-updates)).
 
 ## Preview locally
 

@@ -128,4 +128,10 @@
     } catch (err) { finish(failure(err)); }
   }
   window.FrameDevice = { launch: launch, launchApp: launchApp, art: art, home: home, settings: settings, apps: apps };
+  /* On-TV updates (update.js). Their presence is what shows the update section in Settings > TV. */
+  var updater = window.DrentUpdate;
+  if (api() && updater && updater.enabled) {
+    window.FrameDevice.updateStatus = updater.status; window.FrameDevice.applyUpdate = updater.apply;
+    window.FrameDevice.rollbackUpdate = updater.rollback; window.FrameDevice.reload = updater.reload;
+  }
 }());

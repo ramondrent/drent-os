@@ -7,6 +7,8 @@ to the widget ZIP; they are never copied into app/.
 from pathlib import Path
 import json
 import re
+import subprocess
+import time
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,6 +66,20 @@ def font_overlay(root=ROOT, include_private=True):
     return assets
 
 
+def build_info(root=ROOT):
+    """Identify one packaged build. The commit is named only when the app sources match it."""
+    commit = None
+    try:
+        repo = root.parent
+        head = subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=repo, capture_output=True, text=True, timeout=10)
+        dirty = subprocess.run(['git', 'status', '--porcelain', '--', 'core', root.name], cwd=repo, capture_output=True, text=True, timeout=10)
+        if head.returncode == 0 and dirty.returncode == 0 and not dirty.stdout.strip() and re.fullmatch(r'[0-9a-f]{40}', head.stdout.strip()):
+            commit = head.stdout.strip()
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return {'id': (commit or 'local')[:12] + '-' + str(time.time_ns()), 'commit': commit}
+
+
 def write_widget_archive(output, root=ROOT, include_private=True, device=None):
     """Create an unsigned archive without reading signing or device settings."""
     app = root / 'app'
@@ -72,6 +88,8 @@ def write_widget_archive(output, root=ROOT, include_private=True, device=None):
     if include_private and runtime_config.is_file():
         config = json.loads(runtime_config.read_text())
         overlay['runtime-config.js'] = ('window.DrentConfig = window.RamonConfig = ' + json.dumps(config) + ';\n').encode()
+    if (app / 'build-info.js').is_file():
+        overlay['build-info.js'] = ('window.DrentBuild = ' + json.dumps(build_info(root)) + ';\n').encode()
     with zipfile.ZipFile(output, 'w', zipfile.ZIP_DEFLATED, allowZip64=False) as package:
         for source in sorted(app.rglob('*')):
             if source.is_symlink():

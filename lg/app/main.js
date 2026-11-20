@@ -533,6 +533,10 @@
     installed: null, latest: null, updateAvailable: false, canRollback: false,
     error: null, notice: null
   };
+  function reloadLauncher() {
+    if (window.__DRENT_NO_RELOAD || window.__RAMON_NO_RELOAD) return;
+    if (FrameDevice.reload) FrameDevice.reload(); else window.location.reload();
+  }
   function refreshUpdate(check) {
     if (!FrameDevice.updateStatus || updateState.checking || updateState.installing || updateState.rollingBack) return;
     updateState.checking = true;
@@ -577,7 +581,7 @@
       updateState.canRollback = !!data.canRollback;
       updateState.notice = 'Updated to ' + (updateState.installed && updateState.installed.shortCommit || 'latest') + '. Reloading launcher…';
       norm(); render();
-      setTimeout(function () { if (!window.__DRENT_NO_RELOAD && !window.__RAMON_NO_RELOAD) window.location.reload(); }, 350);
+      setTimeout(reloadLauncher, 350);
     });
   }
   function rollbackUpdate() {
@@ -599,7 +603,7 @@
       updateState.canRollback = !!data.canRollback;
       updateState.notice = 'Previous version restored. Reloading launcher…';
       norm(); render();
-      setTimeout(function () { if (!window.__DRENT_NO_RELOAD && !window.__RAMON_NO_RELOAD) window.location.reload(); }, 350);
+      setTimeout(reloadLauncher, 350);
     });
   }
 

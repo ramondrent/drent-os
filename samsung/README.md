@@ -20,6 +20,21 @@ Use the original local project and its private Samsung SDK/signing configuration
 
 For a new device, follow the platform setup documentation, using your own credentials and application identity. Do not apply another installation's native Home scripts blindly. The guides in `docs/` originated with upstream's Samsung The Frame; those historical device results do not certify Freestyle compatibility or authorize device changes.
 
+## On-TV updates
+
+**Settings → TV** shows the same update section as LG: check GitHub, install, revert. A signed Tizen package cannot replace itself, so the Samsung edition works differently underneath:
+
+- `platform/update.js` asks GitHub for the newest commit on `main` of `ramondrent/drent-os` and reads that commit's `samsung/app/update-manifest.js`. The manifest is built by `tools/build-apps.py`; it lists the code files named in `platform/update-files.json` with a fingerprint each, and one fingerprint for everything else in the app.
+- When only code changed, the TV downloads those files, checks each against its fingerprint and keeps them in the app's local storage. The package itself is not modified.
+- `boot.html` is the app's entry page. `platform/boot.js` runs the downloaded code if there is any, otherwise it opens the installed `index.html`. A download must show Home within 30 seconds of its first start; if it does not, or after two unconfirmed starts, it is removed and the installed launcher opens. That version is then not offered again.
+- **Revert to previous version** returns to the download before it, or to the installed package.
+- A version that changes anything outside the code list (wallpapers, icons, fonts, `config.xml`, `boot.js`, `boot.html`) is named on the TV with "Install it from the computer" and is not offered. A commit that does not change the Samsung code at all shows as up to date.
+- Installing a package from the computer always wins: a download belongs to the package build it was made for (`build-info.js`, written at packaging) and is dropped at the next start after a reinstall.
+
+The private runtime configuration, Plex token included, stays in the installed package and is never downloaded or uploaded. The repository is public, so no GitHub token is involved. `update: {enabled: false}` in a device's `runtime-config.json` hides the update section on that TV; `repo` and `branch` can be set there too.
+
+Each TV needs one install from the computer to get the updater. `npm run check:browser` covers the flow against a mocked GitHub (`scripts/check-update.mjs`). It has not yet been run on a real Samsung TV: storing and starting downloaded code on Tizen still needs owner confirmation on the Freestyle and on the Tizen 4 TV.
+
 ## Assets and preferences
 
 App ordering, appearance and wallpaper preferences are local to the TV. Private paid fonts are excluded from this repository. NPO Start and KIJK cards are personal-use assets without an asserted open redistribution license; see `THIRD_PARTY_NOTICES.md` before publishing them.

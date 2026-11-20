@@ -13,6 +13,7 @@ All UI assets, public fonts and the fifteen wallpapers are bundled. This private
 ## Runtime map and compatibility
 
 - `app/` is built: the launcher comes from `../core/app`, the platform files from `platform/`. Edit those and run `python3 ../tools/build-apps.py` (`npm run build`); `npm run check` rejects a stale build. `npm run dev` rebuilds first.
+- `app/boot.html` is the widget's entry page; `boot.js` starts either code this TV downloaded (`update.js`, Settings → TV) or the installed `index.html`. The browser preview opens `index.html` directly and has no updater. See the README's on-TV updates section before changing `boot.js`, `update.js` or `platform/update-files.json`.
 - `app/index.html` loads the device adapter, gallery/font/palette catalogues, `assets/icons/metrics.js` and `main.js`, with `style.css`.
 - `main.js` owns the List and Dock layouts, panel stack, focus, preferences and wallpaper timers. `platform/device.js` owns installed-app discovery and Tizen calls, and sets `window.FramePlatform`: default apps, storage keys, native app IDs for marks, and system labels. Keep device details in that adapter and read them in `main.js` through `FramePlatform`. `continue.js` and `aerial.js` are shared and reach Plex and the aerial settings through the platform's `window.FrameMedia`.
 - The logical stage is 1920 x 1080, scaled uniformly to the viewport. Check at 1920 x 1080 and 1280 x 720. Glass geometry and cached materials must stay aligned.

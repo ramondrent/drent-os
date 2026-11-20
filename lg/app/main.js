@@ -1,4 +1,5 @@
-/* CleanFrame Home. Static materials, local preferences and LG webOS app controls. */
+/* DrentOS Home, shared by every TV platform. Edit core/app only: lg/app and samsung/app are
+   built copies (tools/build-apps.py). Platform facts come from window.FramePlatform (device.js). */
 (function () {
   'use strict';
 
@@ -16,12 +17,12 @@
   var KEYS = { 37: 'left', 38: 'up', 39: 'right', 40: 'down', 13: 'ok', 27: 'back', 8: 'back', 10009: 'back', 461: 'back' };
   var FULL = 'Home holds nine apps. Remove one first.', LAST = 'Home needs one app';
 
-  var PRIMARY_APPS = [
-    { id: 'appletv', name: 'Apple TV', mark: true, appId: 'com.webos.app.hdmi1' },
-    { id: 'com.webos.app.mediadiscovery', name: 'Media Player', mark: false, appId: 'com.webos.app.mediadiscovery' },
-    { id: 'com.webos.app.lifeonscreen', name: 'LG Gallery+', mark: false, appId: 'com.webos.app.lifeonscreen' },
-    { id: 'com.webos.app.browser', name: 'Web Browser', mark: false, appId: 'com.webos.app.browser' }
-  ];
+  var PLATFORM = window.FramePlatform || {};
+  var SYSTEM_HOME = PLATFORM.systemHome || { name: 'TV Home', description: 'Open the TV’s own Home screen' };
+  var DEFAULT_PRIMARY_APPS = PLATFORM.defaultApps || [];
+  function own(table, key) { return table && Object.prototype.hasOwnProperty.call(table, key) ? table[key] : null; }
+  var RUNTIME_CFG = window.DrentConfig || window.RamonConfig || {};
+  var PRIMARY_APPS = Array.isArray(RUNTIME_CFG.homeApps) && RUNTIME_CFG.homeApps.length ? RUNTIME_CFG.homeApps.slice(0, CAP) : DEFAULT_PRIMARY_APPS;
   var PRIMARY = PRIMARY_APPS.map(function (a) { return a.id; }), APPS = PRIMARY_APPS.slice(), ALPHA = [];
   var WALLS = window.CleanFrameWallpapers || [{ id: 'misty', name: 'Misty coast', tone: 'light', ut: { tr: 'mist', br: 'mist' }, frostVeil: .20 }];
   var ADAPTIVE_INK = window.CleanFrameAdaptiveInk || {};
@@ -31,7 +32,7 @@
     { id: '5', name: 'Every 5 minutes', min: 5 }, { id: '15', name: 'Every 15 minutes', min: 15 },
     { id: '60', name: 'Every hour', min: 60 }
   ];
-  var KEY = 'cleanframe.webos.v1', storageOk = true, catalog = { loading: false, loaded: false, error: null, request: 0, revision: 0 };
+  var KEY = PLATFORM.storageKey || 'cleanframe.home.v1', storageOk = true, catalog = { loading: false, loaded: false, error: null, request: 0, revision: 0 };
   var QA = window.ShoreQA = { minuteMs: window.ShoreQA && window.ShoreQA.minuteMs || 60000 };
   var FONTS = {
     manrope: { name: 'Manrope', family: 'Manrope', display: 600, ui: 500, clock: 500 },
@@ -46,9 +47,9 @@
   var LOOK_VALUES = { bg: ['dark', 'light', 'photo'], layout: ['list', 'dock'], apps: ['icons', 'both', 'text'], font: Object.keys(FONTS).filter(function (id) { return id === 'manrope' || PRIVATE_FONTS.indexOf(id) >= 0; }), controls: ['icons', 'both', 'text'], focus: ['type', 'glass'], material: ['soft', 'frost', 'tint'], media: ['shown', 'hidden'] };
   var LOOK_NAMES = { bg: 'Background', layout: 'Layout', apps: 'Apps', font: 'Font', controls: 'Home controls', focus: 'Focus', material: 'Material', media: 'Plex shelves' };
   var VALUE_NAMES = { dark: 'Dark', light: 'Light', photo: 'Photo', list: 'List', dock: 'Dock', type: 'Type', glass: 'Glass', soft: 'Soft', frost: 'Frost', tint: 'Clear tint', icons: 'Icons', both: 'Icons and text', text: 'Text', shown: 'Shown', hidden: 'Hidden' };
-  var UTIL = { art: ['Inputs', 'tv'], apps: ['All apps', 'apps'], arrange: ['Arrange', 'arrange'], settings: ['Settings', 'settings'] };
+  var UTIL = { art: PLATFORM.inputs || ['Inputs', 'tv'], apps: ['All apps', 'apps'], arrange: ['Arrange', 'arrange'], settings: ['Settings', 'settings'] };
   var MSG = {
-    leave: { title: 'Leave Home?', line: 'Open Launcher manager?', note: '', actions: [['stay', 'Stay'], ['samsung', 'Launcher manager']] }
+    leave: { title: 'Leave Home?', line: 'Open ' + SYSTEM_HOME.name + '?', note: '', actions: [['stay', 'Stay'], ['samsung', SYSTEM_HOME.name]] }
   };
   var SVG = {
     art: '<rect x="3.5" y="4.5" width="17" height="15" rx="2"/><circle cx="9" cy="9.8" r="1.5"/><path d="m4.5 17.5 4.5-4.5 3 3 2.5-2.5 5 5"/>',
@@ -93,9 +94,12 @@
   function app(id) {
     for (var i = 0; i < APPS.length; i++) if (APPS[i].id === id) {
       var a = APPS[i], alias = S.c && S.c.names && S.c.names[id], copy;
-      if (a.appId === 'com.beb.plxnative') {
+      /* A platform may give a native app a readable name: always, or only in place of one raw name. */
+      var rule = own(PLATFORM.nativeNames, a.appId);
+      if (rule) {
         copy = {}; Object.keys(a).forEach(function (key) { copy[key] = a[key]; });
-        copy.name = alias && alias !== 'PlxNative' ? alias : 'Plex'; copy.nativeName = 'Plex'; return copy;
+        copy.name = rule.always ? (alias && alias !== rule.replaces ? alias : rule.name) : (alias || (a.name === rule.replaces ? rule.name : a.name));
+        copy.nativeName = rule.name; return copy;
       }
       if (!alias) return a;
       copy = {}; Object.keys(a).forEach(function (key) { copy[key] = a[key]; });
@@ -158,14 +162,20 @@
     return '<span class="mark' + (markProbes[id] === 'bad' ? ' is-bad' : '') + '" data-mark="' + id + '" style="width:' + w + 'px;height:' + h + 'px">'
       + (maskSupport ? '<span class="mk" style="' + st + ';-webkit-mask-image:url(' + ICONS + id + '.svg);mask-image:url(' + ICONS + id + '.svg)"></span>' : '<img alt="" src="' + ICONS + id + '.svg" style="' + st + '">') + '</span>';
   }
-  var NATIVE_MARKS = { 'io.strem.tv': 'stremio', nlziet: 'nlziet', netflix: 'netflix', amazon: 'primevideo', 'com.disney.disneyplus-prod': 'disneyplus', 'com.apple.appletv': 'appletv', spotify: 'spotify' };
+  /* Drawn marks are shared; each platform maps its own app IDs to them in FramePlatform. */
+  var DRAWN_MARKS = {
+    hdmi: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="4.5" width="19" height="12.5" rx="2"/><path d="M8 20h8M12 17v3"/></svg>',
+    youtube: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>',
+    plex: '<svg viewBox="0 0 48 48" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M12 4h13l14 20-14 20H12l14-20z"/></svg>',
+    playstation: '<svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M8.984 2.596v17.547l3.915 1.261V6.688c0-.69.304-1.151.794-.991.636.18.76.814.76 1.505v5.875c2.441 1.193 4.362-.002 4.362-3.152 0-3.237-1.126-4.675-4.438-5.827-1.307-.448-3.728-1.186-5.39-1.502zm4.656 16.241l6.296-2.275c.715-.258.826-.625.246-.818-.586-.192-1.637-.139-2.357.123l-4.205 1.5V14.98l.24-.085s1.201-.42 2.913-.615c1.696-.18 3.785.03 5.437.661 1.848.601 2.04 1.472 1.576 2.072-.465.6-1.622 1.036-1.622 1.036l-8.544 3.107V18.86zM1.807 18.6c-1.9-.545-2.214-1.668-1.352-2.32.801-.586 2.16-1.052 2.16-1.052l5.615-2.013v2.313L4.205 17c-.705.271-.825.632-.239.826.586.195 1.637.15 2.343-.12L8.247 17v2.074c-.12.03-.256.044-.39.073-1.939.331-3.996.196-6.038-.479z"/></svg>',
+    homebrew: '<svg viewBox="0 0 64 48" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 17v21a4 4 0 0 0 4 4h17a4 4 0 0 0 4-4V17M43 21h5a6 6 0 0 1 0 12h-5M25 24v10M35 24v10"/><path d="M18 17a5 5 0 0 1-1-10 7 7 0 0 1 13-2 6 6 0 0 1 10 3 5 5 0 0 1 3 9Z"/></svg>',
+    windows: '<svg viewBox="0 0 48 48" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M4 4h19v19H4zM25 4h19v19H25zM4 25h19v19H4zM25 25h19v19H25z"/></svg>'
+  };
+  var ICON_MARKS = PLATFORM.iconMarks || {}, APP_MARKS = PLATFORM.drawnMarks || {};
   function appMark(a, w, h, size) {
-    if (NATIVE_MARKS[a.appId]) return markHtml(NATIVE_MARKS[a.appId], w, h, size);
-    if (a.appId === 'com.webos.app.hdmi4') return '<span class="mark playstation-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M8.984 2.596v17.547l3.915 1.261V6.688c0-.69.304-1.151.794-.991.636.18.76.814.76 1.505v5.875c2.441 1.193 4.362-.002 4.362-3.152 0-3.237-1.126-4.675-4.438-5.827-1.307-.448-3.728-1.186-5.39-1.502zm4.656 16.241l6.296-2.275c.715-.258.826-.625.246-.818-.586-.192-1.637-.139-2.357.123l-4.205 1.5V14.98l.24-.085s1.201-.42 2.913-.615c1.696-.18 3.785.03 5.437.661 1.848.601 2.04 1.472 1.576 2.072-.465.6-1.622 1.036-1.622 1.036l-8.544 3.107V18.86zM1.807 18.6c-1.9-.545-2.214-1.668-1.352-2.32.801-.586 2.16-1.052 2.16-1.052l5.615-2.013v2.313L4.205 17c-.705.271-.825.632-.239.826.586.195 1.637.15 2.343-.12L8.247 17v2.074c-.12.03-.256.044-.39.073-1.939.331-3.996.196-6.038-.479z"/></svg></span>';
-    if (a.appId === 'youtube.leanback.v4') return '<span class="mark youtube-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 24 24" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></span>';
-    if (a.appId === 'org.webosbrew.hbchannel') return '<span class="mark homebrew-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 64 48" width="100%" height="100%" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 17v21a4 4 0 0 0 4 4h17a4 4 0 0 0 4-4V17M43 21h5a6 6 0 0 1 0 12h-5M25 24v10M35 24v10"/><path d="M18 17a5 5 0 0 1-1-10 7 7 0 0 1 13-2 6 6 0 0 1 10 3 5 5 0 0 1 3 9Z"/></svg></span>';
-    if (a.appId === 'com.webos.app.hdmi3') return '<span class="mark windows-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 48 48" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M4 4h19v19H4zM25 4h19v19H25zM4 25h19v19H4zM25 25h19v19H25z"/></svg></span>';
-    if (a.appId === 'com.beb.plxnative' || a.appId === 'cdp-30') return '<span class="mark plex-mark" style="width:' + w + 'px;height:' + h + 'px"><svg viewBox="0 0 48 48" width="100%" height="100%" fill="currentColor" aria-hidden="true"><path d="M12 4h13l14 20-14 20H12l14-20z"/></svg></span>';
+    var iconMark = own(ICON_MARKS, a.appId), drawn = own(APP_MARKS, a.appId);
+    if (iconMark) return markHtml(iconMark, w, h, size);
+    if (drawn && own(DRAWN_MARKS, drawn)) return '<span class="mark ' + drawn + '-mark" style="width:' + w + 'px;height:' + h + 'px">' + DRAWN_MARKS[drawn] + '</span>';
     if (a.mark && (maskSupport || S.c.bg !== 'light')) return markHtml(a.brand || a.id, w, h, size);
     var words = a.name.split(/\s+/), letters = words[0].charAt(0) + (words.length > 1 ? words[1].charAt(0) : '');
     return '<span class="mark monogram' + (a.icon ? ' native-icon' : '') + '" style="width:' + w + 'px;height:' + h + 'px;font-size:' + Math.round(size * .65) + 'px"><span>' + esc(letters.toUpperCase()) + '</span>'
@@ -338,9 +348,9 @@
 
   /* ---------- Saved preferences ---------- */
   function safeId(id) { return typeof id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._-]{0,160}$/.test(id) && ['constructor', 'prototype', '__proto__'].indexOf(id) < 0; }
-  function safeIcon(path) { return typeof path === 'string' && path.length < 2048 && /^(?:http:\/\/127\.0\.0\.1:8765\/icon\/[\w.-]+$|\/[^\/]|file:\/\/\/)/.test(path) ? path : ''; }
+  function safeIcon(path) { return typeof path === 'string' && path.length < 2048 && (PLATFORM.iconSource || /^(?:\/[^\/]|file:\/\/\/)/).test(path) ? path : ''; }
   function load() {
-    var keys = [KEY], raw, saved, i;
+    var keys = [KEY].concat(PLATFORM.legacyStorageKeys || []), raw, saved, i;
     for (i = 0; i < keys.length; i++) {
       try {
         raw = localStorage.getItem(keys[i]);
@@ -369,7 +379,7 @@
       bg: pick(modern.bg, LOOK_VALUES.bg, legacyList ? 'dark' : 'photo'), layout: pick(modern.layout, LOOK_VALUES.layout, legacyList ? 'list' : 'dock'),
       apps: pick(modern.apps, LOOK_VALUES.apps, legacyList ? 'text' : 'both'), controls: pick(modern.controls, LOOK_VALUES.controls, 'icons'),
       focus: pick(modern.focus, LOOK_VALUES.focus, legacyList ? 'type' : 'glass'), material: pick(modern.material, LOOK_VALUES.material, 'soft'),
-      media: pick(modern.media || s.media, LOOK_VALUES.media, 'shown'),
+      media: pick(modern.media || s.media, LOOK_VALUES.media, RUNTIME_CFG.media === 'hidden' ? 'hidden' : 'shown'),
       font: pick(modern.font, LOOK_VALUES.font, 'manrope'), wall: wall(modern.wall || s.wallpaper) ? modern.wall || s.wallpaper : WALLS[0].id,
       names: cleanNames(s.names), home: h, recent: recent, lastApp: h.indexOf(s.lastApp) >= 0 ? s.lastApp : h[0],
       mode: pick(s.mode, MODES.map(function (m) { return m.id; }), 'fixed')
@@ -516,6 +526,8 @@
     });
   }
 
+  /* On-TV updates appear wherever the platform's device adapter can perform them. */
+  function hasUpdater() { return !!(window.FrameDevice && FrameDevice.updateStatus); }
   var updateState = {
     checking: false, installing: false, rollingBack: false,
     installed: null, latest: null, updateAvailable: false, canRollback: false,
@@ -599,7 +611,7 @@
     return { prev: v ? 'up' : 'left', next: v ? 'down' : 'right', out: v ? 'right' : 'up', inn: v ? 'left' : 'down' };
   }
   function utilAction(u) {
-    if (u === 'art') perform('Inputs', FrameDevice.art);
+    if (u === 'art') perform(UTIL.art[0], FrameDevice.art);
     else if (u === 'apps') openApps();
     else openSettings();
   }
@@ -607,7 +619,7 @@
   function openSettings() { push({ id: 'settings', f: { id: S.settingsFocus } }); }
   function openAppearance(group) {
     var axis = { background: 'bg', layout: 'layout', typography: 'font', focus: 'focus' }[group];
-    var action = S.detailFocus[group] || (axis ? 'choice.' + axis + '.' + S.c[axis] : group === 'rotation' ? 'rotation.' + S.c.mode : 'samsung.update');
+    var action = S.detailFocus[group] || (axis ? 'choice.' + axis + '.' + S.c[axis] : group === 'rotation' ? 'rotation.' + S.c.mode : hasUpdater() ? 'samsung.update' : 'samsung.home');
     push({ id: 'appearance', group: group, f: { action: action } });
     if (group === 'samsung') refreshUpdate(true);
   }
@@ -984,7 +996,7 @@
       { id: 'focus', label: 'Focus', value: VALUE_NAMES[S.c.focus] + (materialApplies() ? ', ' + VALUE_NAMES[S.c.material] : '') },
       { id: 'editor', label: 'Apps on Home', value: n + (n === 1 ? ' app' : ' apps') },
       { id: 'names', label: 'App names', value: 'Rename apps in this launcher' },
-      { id: 'samsung', label: 'TV', value: updateState.updateAvailable && updateState.latest ? 'Update available (' + updateState.latest.shortCommit + ')' : 'Updates, Home and TV settings' }];
+      { id: 'samsung', label: 'TV', value: updateState.updateAvailable && updateState.latest ? 'Update available (' + updateState.latest.shortCommit + ')' : hasUpdater() ? 'Updates, Home and TV settings' : 'Home and TV settings' }];
   }
   function settingsIds() { return settingsRows().map(function (r) { return r.id; }); }
   V.settings = {
@@ -1032,6 +1044,11 @@
     ];
     if (t.group === 'rotation') return [{ id: 'mode', title: '', items: options('mode', MODES.map(function (m) { return m.id; }), flat),
       reason: flat ? 'Choose Photo in Background to use rotation.' : 'Timed changes pause while Settings or another panel is open.' }];
+    var systemItems = [
+      { action: 'samsung.home', label: SYSTEM_HOME.name, description: SYSTEM_HOME.description },
+      { action: 'samsung.settings', label: 'TV settings', description: 'Picture, sound and network settings' }
+    ];
+    if (!hasUpdater()) return [{ id: 'samsung', title: '', items: systemItems }];
     var canInstall = !!(updateState.updateAvailable || (updateState.latest && (!updateState.installed || !updateState.installed.commit)));
     var upLabel = updateState.installing ? 'Updating DrentOS…'
       : updateState.checking ? 'Checking for updates…'
@@ -1053,13 +1070,7 @@
         description: 'Restore the previous installed DrentOS build'
       });
     }
-    return [
-      { id: 'update', title: 'DrentOS update', items: updateItems },
-      { id: 'samsung', title: 'System', items: [
-        { action: 'samsung.home', label: 'Launcher manager', description: 'Open the launcher manager and recovery controls' },
-        { action: 'samsung.settings', label: 'TV settings', description: 'Picture, sound and network settings' }
-      ] }
-    ];
+    return [{ id: 'update', title: 'DrentOS update', items: updateItems }, { id: 'samsung', title: 'System', items: systemItems }];
   }
   function detailRows(t) {
     var rows = [[{ action: 'settings.back', label: t.group === 'rotation' ? 'Background' : 'Settings' }]];
@@ -1108,7 +1119,7 @@
       else refreshUpdate(true);
     }
     else if (item.action === 'samsung.rollback') rollbackUpdate();
-    else if (item.action === 'samsung.home') perform('Launcher manager', FrameDevice.home);
+    else if (item.action === 'samsung.home') perform(SYSTEM_HOME.name, FrameDevice.home);
     else if (item.action === 'samsung.settings') perform('TV settings', FrameDevice.settings);
   }
   V.appearance = {
@@ -1151,7 +1162,7 @@
       if (k === 'left') t.f.b = Math.max(0, t.f.b - 1);
       else if (k === 'right') t.f.b = Math.min(A.length - 1, t.f.b + 1);
       else if (k === 'back') pop();
-      else if (k === 'ok') { a = A[t.f.b][0]; pop(); if (a === 'samsung') perform('Launcher manager', FrameDevice.home); }
+      else if (k === 'ok') { a = A[t.f.b][0]; pop(); if (a === 'samsung') perform(SYSTEM_HOME.name, FrameDevice.home); }
     },
     point: function (t, z, i) { if (z === 'act') { t.f.b = i; this.key(t, 'ok'); } }
   };
@@ -1382,9 +1393,7 @@
   }
   /* Match native IDs so catalogue refreshes and saved app order keep their artwork. */
   function dockArtwork(a) {
-    var cards = { 'kIciSQlYEM.plex': 'plex', '9Ur5IzDKqV.TizenYouTube': 'youtube',
-      'iquaePhaki.npostart': 'npo-start', '8H24TM2DAH.kijk': 'kijk' };
-    var card = cards[a.appId];
+    var card = own(PLATFORM.artwork, a.appId);
     return card ? '<span class="mark app-artwork"><img alt="" src="' + ASSETS + 'app-artwork/' + card + '.svg"></span>' :
       appMark(a, S.c.apps === 'icons' ? 136 : 120, S.c.apps === 'icons' ? 88 : 72, S.c.apps === 'icons' ? 72 : 58);
   }
@@ -1594,7 +1603,7 @@
     appearanceEl.setAttribute('aria-modal', 'true');
     if (t.id === 'wallpaper') { renderWallpaper(t); return; }
     V.appearance.norm(t);
-    appearanceEl.className = 'appearance detail-' + t.group;
+    appearanceEl.className = 'appearance detail-' + t.group + (t.group === 'samsung' && hasUpdater() ? ' has-updater' : '');
     appearanceRows.className = 'appearance-rows';
     appearanceTitle.textContent = DETAIL_NAMES[t.group];
     var at = detailLocation(t), selected = at.item, error = S.lookError, status = '', hint;
@@ -2095,7 +2104,7 @@
     out.committed = S.c; out.shown = S.shown; out.pending = S.pending; out.view = t.id; out.selected = S.sel;
     out.focusAction = focusedAction(); out.writes = S.writes; out.failedWrites = S.failed; out.error = S.err;
     out.continueWatching = Media.state();
-    out.update = {
+    if (hasUpdater()) out.update = {
       checking: updateState.checking, installing: updateState.installing, rollingBack: updateState.rollingBack,
       installed: updateState.installed, latest: updateState.latest,
       updateAvailable: updateState.updateAvailable, canRollback: updateState.canRollback,
@@ -2138,9 +2147,7 @@
   var readyTimer = setInterval(function () {
     if (QA.ready() || ++readyTries >= 80) {
       clearInterval(readyTimer);
-      var readyLog = new XMLHttpRequest();
-      readyLog.open('GET', 'http://127.0.0.1:8765/api/log?m=' + encodeURIComponent(QA.ready() ? 'CleanFrame webOS ready media=' + (mediaAvailable ? 'loaded' : 'unavailable') : 'CleanFrame webOS appearance timeout'), true);
-      readyLog.timeout = 3000; readyLog.send();
+      if (FrameDevice.log) FrameDevice.log(QA.ready() ? 'ready media=' + (mediaAvailable ? 'loaded' : 'unavailable') : 'appearance timeout');
     }
   }, 250);
 })();

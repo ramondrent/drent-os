@@ -5,3 +5,5 @@ Brand marks identify their respective services in CleanFrame. They are not endor
 Simple Icons sources are CC0; trademarks remain with their owners. Custom Brand Icons retains its MIT licence; this source record does not grant trademark rights. See SOURCES.json for exact revisions and adaptations.
 
 Prime uses the two smile subpaths, not clipped wordmark text. Apple Music uses the note subpath without the outer app tile. These are intentional simplified marks beside full service names. Simple Icons CC0 and Custom Brand Icons MIT texts are included here. The old Australian TV source GPL text is retained for provenance only; no current icon uses that source.
+
+NLZIET uses the vector from Nerwyn/universal-remote-card under Apache-2.0 (see UNIVERSAL-REMOTE-CARD-LICENSE.txt and the pinned source in SOURCES.json). The path is unchanged; it is wrapped in a white SVG for the launcher. This identifies the installed service and does not grant trademark rights.

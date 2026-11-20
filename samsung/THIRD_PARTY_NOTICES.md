@@ -18,6 +18,7 @@ The public app uses Manrope, Geist and Newsreader. A personal widget containing 
 | --- | --- |
 | Simple Icons service marks | CC0; exact revisions and adaptations in `app/assets/icons/SOURCES.json` and `ADDITIONAL-SOURCES.json`. The CC0 text is retained beside the icons. |
 | Disney+, ABC and SBS marks | [Custom Brand Icons](https://github.com/elax46/custom-brand-icons), MIT. The retained licence is `app/assets/icons/CUSTOM-BRAND-ICONS-LICENSE.txt`. ABC and SBS sources were replaced during the public-source review. Exact revisions, source files and extraction/recolour notes are in `SOURCES.json`. |
+| NLZIET mark | [Universal Remote Card](https://github.com/Nerwyn/universal-remote-card), Apache-2.0. The retained licence is `app/assets/icons/UNIVERSAL-REMOTE-CARD-LICENSE.txt`, with the pinned source and extraction notes in `app/assets/icons/SOURCES.json`. |
 | Art, apps, settings and home outlines | Original CleanFrame drawings, covered by the project's MIT licence. |
 
 Brand marks identify services. Their owners retain trademark rights; this project claims no endorsement or affiliation. The older Australian TV icon archive's GPL text is retained for historical provenance only; no current icon uses that archive.
@@ -37,3 +38,7 @@ Development dependencies retain the licences in their npm packages. They are not
 ## Personal Freestyle app cards
 
 The bundled Plex and YouTube cards use the credited CC0 Simple Icons marks. NPO Start and KIJK cards contain their official website logos; copyright remains with NPO and Talpa respectively, with no open licence asserted. Source URLs and adaptations are recorded in [the app artwork notes](app/assets/app-artwork/README.md). These personal-use assets require rights review before public redistribution.
+
+## LG HDMI 4 icon
+
+The monochrome PlayStation mark embedded in `app/main.js` comes from [Simple Icons](https://github.com/simple-icons/simple-icons/blob/develop/icons/playstation.svg), under CC0 (included in `app/assets/icons/SIMPLE-ICONS-LICENSE.txt`). PlayStation is a trademark of Sony Interactive Entertainment.

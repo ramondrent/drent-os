@@ -11,5 +11,6 @@
   "art": "CleanFrame original utility outline, 24px grid / 1.6px stroke",
   "apps": "CleanFrame original utility outline, 24px grid / 1.6px stroke",
   "settings": "CleanFrame original utility outline, 24px grid / 1.6px stroke",
-  "home": "CleanFrame original utility outline, 24px grid / 1.6px stroke"
+  "home": "CleanFrame original utility outline, 24px grid / 1.6px stroke",
+  "nlziet": "https://github.com/Nerwyn/universal-remote-card/blob/7bb95958095ec180f3c134ff4e3646a1ad48c359/src/models/maps/defaultIcons.ts (Apache-2.0; extracted NLZIET path, wrapped as white SVG)"
 }

@@ -1,4 +1,4 @@
-/* Plex shelves backed directly by the private TV client. */
+/* Plex shelves, shared by every platform. Requests go to the platform's media source (window.FrameMedia). */
 (function () {
  'use strict';
  var items=[],index=0,loading=false,loaded=false,error='',busy=false,last=0,notify=function(){},signature='';
@@ -7,7 +7,7 @@
   return {title:title,root:root,items:[],index:0,signature:'',error:''};
  });
  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
- function request(path,post,done){window.FramePlex.request(path,post,done);}
+ function request(path,post,done){if(!window.FrameMedia){done('Media service unavailable');return;}window.FrameMedia.request(path,post,done);}
  function refresh(force){if(loading||(!force&&Date.now()-last<60000))return;loading=true;notify();request('/continue',false,function(err,data){loading=false;last=Date.now();loaded=true;
  error=err||(!data.configured?'Connect Plex to see your shows and movies':'');
  if(!err){var selected=items[index]&&items[index].id;items=data.items||[];index=0;items.some(function(i,n){if(i.id===selected){index=n;return true;}return false;});}
@@ -24,7 +24,7 @@
    if(!items.length)html+='<button class="cw-empty" data-z="continue" data-i="'+(n*100)+'" data-action="continue.retry"><span class="cw-empty-title"></span><small></small></button>';
    else {
     html+='<div class="cw-viewport"><div class="cw-track">';
-    items.forEach(function(item,cardIndex){html+='<button class="cw-card" data-z="continue" data-i="'+(n*100+cardIndex)+'" data-action="continue.'+esc(item.id)+'" aria-label="'+esc(item.title+' '+item.subtitle)+'"><div class="cw-art">'+(item.image?'<img src="'+esc(item.image)+'" alt="">':'')+'<span class="cw-badge">'+(n?'Details':item.progress>0?'Resume':'Up next')+'</span><span class="cw-progress"><i style="width:'+Math.round(item.progress*100)+'%"></i></span></div><strong>'+esc(item.title)+'</strong><span class="cw-subtitle">'+esc(item.subtitle)+'</span></button>';});
+    items.forEach(function(item,cardIndex){html+='<button class="cw-card" data-z="continue" data-i="'+(n*100+cardIndex)+'" data-action="continue.'+esc(item.id)+'" aria-label="'+esc(item.title+' '+item.subtitle)+'"><div class="cw-art">'+(item.image?'<img src="'+esc(window.FrameMedia.image(item.image))+'" alt="">':'')+'<span class="cw-badge">'+esc(item.playbackMode==='app'?'Open Plex':item.playbackMode==='unavailable'?'Player unavailable':n?'Details':item.progress>0?'Resume':'Up next')+'</span><span class="cw-progress"><i style="width:'+Math.round(item.progress*100)+'%"></i></span></div><strong>'+esc(item.title)+'</strong><span class="cw-subtitle">'+esc(item.subtitle)+'</span></button>';});
     html+='</div></div>';
    }
    html+='<p class="cw-status" aria-live="polite"></p>';root.innerHTML=html;
@@ -43,7 +43,6 @@
   root.querySelector('.cw-status').textContent=status;root.querySelector('.cw-status').hidden=!status;
  }
  function play(){if(busy)return;var row=rows[rowIndex];if(!row.items.length){refresh(true);return;}var item=row.items[row.index];busy=true;error='';notify();
- request('/play/'+encodeURIComponent(item.id),true,function(err){busy=false;error=err||'';rows[rowIndex].error=error;notify();});
- }
+ request('/play/'+encodeURIComponent(item.id)+(rowIndex&&window.FrameMedia&&window.FrameMedia.opensDetails?'?action=open':''),true,function(err){busy=false;error=err?String(err).replace(/PlxNative/g,'Plex'):'';rows[rowIndex].error=error;notify();});}
  window.FrameContinue={render:render,refresh:refresh,onChange:function(fn){notify=fn;},key:function(k){var row=rows[rowIndex];if(k==='up'){if(!rowIndex)return false;rowIndex--;return true;}if(k==='down'){rowIndex=Math.min(2,rowIndex+1);return true;}if(k==='left')row.index=Math.max(0,row.index-1);if(k==='right')row.index=Math.min(Math.max(0,row.items.length-1),row.index+1);if(k==='ok')play();if(!rowIndex)index=row.index;return true;},reset:function(){rowIndex=0;},select:function(i){rowIndex=Math.max(0,Math.min(2,Math.floor(i/100)));var row=rows[rowIndex];row.index=Math.max(0,Math.min(row.items.length-1,i%100));play();},state:function(){return {count:items.length,loading:loading,loaded:loaded,error:error,index:rows[0].index,busy:busy,row:rowIndex};}};
 }());

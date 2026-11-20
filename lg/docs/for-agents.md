@@ -8,7 +8,7 @@ Choose the scope before starting: a browser contribution, an independently signe
 
 Use the browser-only prompt in the README. Read `AGENTS.md`, then the development and interaction docs. Run the public-font preview so the result is reproducible on a clean clone. Finish with source validation, relevant browser checks, a screenshot for visual changes and a clear statement of what needs physical TV observation.
 
-The current app uses List and Dock, fifteen wallpapers and separate appearance settings. `app/main.js` handles interaction; `app/device.js` owns device calls. The existing storage migration keeps older installations usable.
+The current app uses List and Dock, fifteen wallpapers and separate appearance settings. `../core/app/main.js` handles interaction for every platform; `platform/device.js` owns this platform's device calls. `app/` is a built copy (`python3 ../tools/build-apps.py`). The existing storage migration keeps older installations usable.
 
 ## Install your own copy
 

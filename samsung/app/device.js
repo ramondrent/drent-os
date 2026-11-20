@@ -1,4 +1,5 @@
-/* Public Tizen application APIs. No Mac server, network address or credentials. */
+/* Samsung Tizen platform layer for the shared launcher in core/app. Public Tizen application
+   APIs only: no Mac server, network address or credentials. */
 (function () {
   'use strict';
   // CSS.supports(gap) also accepts grid gap on older engines: measure flex once.
@@ -9,6 +10,27 @@
   document.body.appendChild(gapProbe);
   if (gapProbe.scrollHeight !== 1) document.documentElement.classList.add('no-flex-gap');
   document.body.removeChild(gapProbe);
+
+  /* Platform facts read by the shared launcher. App IDs, labels and storage are this platform's own. */
+  window.FramePlatform = {
+    id: 'tizen',
+    storageKey: 'cleanframe.home.v1',
+    legacyStorageKeys: ['cleanframe.shore.v1'],
+    defaultApps: [
+      { id: 'kIciSQlYEM.plex', name: 'Plex', mark: false, appId: 'kIciSQlYEM.plex' },
+      { id: 'youtube', name: 'YouTube', mark: true, appId: '9Ur5IzDKqV.TizenYouTube' },
+      { id: 'iquaePhaki.npostart', name: 'NPO Start', mark: false, appId: 'iquaePhaki.npostart' },
+      { id: '8H24TM2DAH.kijk', name: 'KIJK', mark: false, appId: '8H24TM2DAH.kijk' }
+    ],
+    nativeNames: { 'kIciSQlYEM.plex': { name: 'Plex', replaces: 'PlxNative', always: true }, 'org.tizen.tv-viewer': { name: 'HDMI', replaces: 'tv-viewer' } },
+    /* Match native IDs so catalogue refreshes and saved app order keep their artwork. */
+    artwork: { 'kIciSQlYEM.plex': 'plex', '9Ur5IzDKqV.TizenYouTube': 'youtube', 'iquaePhaki.npostart': 'npo-start', '8H24TM2DAH.kijk': 'kijk' },
+    iconSource: /^(?:\/[^\/]|file:\/\/\/|wgt-package:\/\/\/)/,
+    inputs: ['Art Mode', 'art'],
+    systemHome: { name: 'Samsung Home', description: 'Open Samsung’s Home screen' },
+    iconMarks: {},
+    drawnMarks: { 'org.tizen.tv-viewer': 'hdmi', '9Ur5IzDKqV.TizenYouTube': 'youtube', 'kIciSQlYEM.plex': 'plex' }
+  };
 
   var IDS = {
     stremio: 'IkWsFHtOY9.Stremio', netflix: 'org.tizen.netflix-app',

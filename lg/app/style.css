@@ -511,10 +511,11 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .detail-layout .setting-section+.setting-section{margin-top:28px}
 .detail-focus .setting-section+.setting-section{margin-top:64px}
 .detail-typography .setting-choice,.detail-rotation .setting-choice{min-height:88px}
-.detail-typography .appearance-rows,.detail-rotation .appearance-rows{top:260px}
-.detail-samsung .appearance-rows{top:236px}
-.detail-samsung .setting-section+.setting-section{margin-top:24px}
-.detail-samsung .setting-choice.has-description{min-height:106px}
+.detail-typography .appearance-rows,.detail-rotation .appearance-rows,.detail-samsung .appearance-rows{top:260px}
+/* Platforms with an on-TV updater show two sections on the TV page. */
+.detail-samsung.has-updater .appearance-rows{top:236px}
+.detail-samsung.has-updater .setting-section+.setting-section{margin-top:24px}
+.detail-samsung.has-updater .setting-choice.has-description{min-height:106px}
 .setting-choice.has-description{min-height:120px}
 .setting-description{font-size:26px;line-height:36px;font-weight:400;letter-spacing:0;color:var(--mute);white-space:normal}
 .setting-choice.is-focus .setting-description{color:var(--solid-mute)}
@@ -656,27 +657,21 @@ html,body{width:100%;height:100%;overflow:hidden;background:#000}
 .cw-status{position:absolute;top:324px;margin:0}
 @media(prefers-reduced-motion:reduce){.media-backdrop{transition:none}}
 
-/* webOS 5/6: flex gap is unavailable; retain spacing without runtime layout work. */
-.no-flex-gap /* Caption: the clock{gap:0}
-.no-flex-gap /* Caption: the clock > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:4px}
-.no-flex-gap or the name of the mode Home is in */
-.caption{gap:0}
-.no-flex-gap or the name of the mode Home is in */
-.caption > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:4px}
+/* Transparent brand marks sit directly on the shared glass surface. */
+.tile .mark.app-artwork,.tile.is-focus .mark.app-artwork{border-radius:0;overflow:visible;box-shadow:none}
+.tile .app-artwork img{filter:drop-shadow(0 2px 4px rgba(0,0,0,.2))}
+
+/* Older engines (webOS 5/6, Tizen 4/5): flex gap is unavailable; retain spacing without runtime layout work. */
+.no-flex-gap .caption{gap:0}
+.no-flex-gap .caption > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:4px}
 .no-flex-gap .warn{gap:0}
 .no-flex-gap .warn > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:12px}
-.no-flex-gap /* Base controls also serve wallpaper preview. Quiet Home utilities override them below. */
-.utils{gap:0}
-.no-flex-gap /* Base controls also serve wallpaper preview. Quiet Home utilities override them below. */
-.utils > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:8px}
+.no-flex-gap .utils{gap:0}
+.no-flex-gap .utils > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:8px}
 .no-flex-gap .u{gap:0}
 .no-flex-gap .u > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:12px}
-.no-flex-gap /* The rightmost icon box ends at 1780; SVG paths retain their native optical padding.
-   Editing actions use labels in both comparison styles. Neither style has a backing. */
-.quiet-utils{gap:0}
-.no-flex-gap /* The rightmost icon box ends at 1780; SVG paths retain their native optical padding.
-   Editing actions use labels in both comparison styles. Neither style has a backing. */
-.quiet-utils > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:20px}
+.no-flex-gap .quiet-utils{gap:0}
+.no-flex-gap .quiet-utils > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:20px}
 .no-flex-gap .quiet-utils .u{gap:0}
 .no-flex-gap .quiet-utils .u > * + *{margin-top:0;margin-left:0;margin-right:0;margin-left:10px}
 .no-flex-gap .quiet-utils.is-icons{gap:0}

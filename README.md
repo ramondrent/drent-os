@@ -4,12 +4,30 @@ Your TV, your home screen.
 
 DrentOS is a personal launcher project built on [Nathan Clark's CleanFrame](https://github.com/nthnclrk/CleanFrame), adapted for a Samsung The Freestyle and rooted LG webOS TVs. A quiet home screen with local wallpapers, large app tiles, remote navigation, and no promotional feed.
 
-DrentOS brings both working versions under one identity. They share a design and upstream ancestry, but use different device APIs and deployment methods.
+DrentOS is one launcher for both TV families. The interface and its behaviour are shared; each family adds a thin platform layer for its own device APIs, media source and deployment method.
 
 | Version | Features | Guide |
 | --- | --- | --- |
 | LG webOS | Landscape app dock, custom app names and monochrome icons, date/clock, scrolling Plex Continue Watching and recent additions, direct native Plex playback, aerial idle mode | [LG setup](lg/README.md) |
 | Samsung Tizen | Freestyle launcher, direct Plex shelves, native Plex playback handoff, aerial idle mode, wallpaper/appearance settings | [Samsung setup](samsung/README.md) |
+
+## How the source is organised
+
+| Folder | Contents |
+| --- | --- |
+| `core/app/` | The launcher itself: layouts, settings, shelves, aerials, styles and assets. A change here reaches every TV. |
+| `lg/platform/`, `samsung/platform/` | What only one family needs: `device.js` (device calls and the platform facts the launcher reads), its media source and manifest. |
+| `lg/app/`, `samsung/app/` | Built copies of `core/app` plus that platform's layer. Do not edit them. |
+
+After changing `core/app` or a `platform/` folder, rebuild both apps from the repository root and commit the result:
+
+```sh
+python3 tools/build-apps.py
+```
+
+`npm run check` in either platform fails if a built folder is out of date. The built folders are kept in Git because the LG on-TV updater installs `lg/app` directly from the repository.
+
+A feature is written once in `core/app`. Where a TV family cannot support something, the launcher hides it based on what that platform's `device.js` provides. The on-TV update screen, for example, appears only where the device adapter can install updates, which today is LG.
 
 ## Preview locally
 
@@ -37,7 +55,7 @@ For LG's media bridge, also run `node scripts/check-media.cjs`. From the reposit
 
 ## What is included
 
-- The current customized source for both launchers, with separate dependency lockfiles.
+- The shared launcher source, a platform layer and built app for each TV family, with separate dependency lockfiles.
 - Bundled wallpapers, cached glass materials, icons, and public fonts with source notices.
 - Browser checks, Plex bridge tests, preview tools, and reference installation/recovery scripts.
 - A fresh history for this personal fork. Upstream history remains at the credited source.

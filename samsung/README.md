@@ -1,5 +1,7 @@
 # DrentOS — Samsung edition
 
+> `app/` here is built from the shared launcher in `../core/app` plus `platform/`. Edit those, then run `python3 ../tools/build-apps.py`; see the [root README](../README.md#how-the-source-is-organised). `platform/` holds the Tizen device adapter and platform facts (`device.js`), the direct Plex client (`plex.js`), the runtime-config placeholder and `config.xml`.
+
 The personalized Tizen version of CleanFrame, with bundled app cards and remote-operated appearance settings. Development and browser previews require no TV.
 
 ```sh

@@ -5,10 +5,11 @@
  var video=document.createElement('video');video.id='idleAerial';video.muted=true;video.autoplay=false;video.preload='none';video.setAttribute('playsinline','');video.hidden=true;
  video.style.cssText='position:fixed;left:0;top:0;width:100vw;height:100vh;object-fit:cover;background:#000;z-index:10000';document.body.appendChild(video);
  function home(){return !document.hidden&&document.hasFocus()&&window.ShoreQA&&ShoreQA.ready()&&document.getElementById('stage').classList.contains('at-home');}
- function stop(failed){active=false;starting=false;video.pause();video.removeAttribute('src');video.load();video.hidden=true;clearTimeout(watchdog);last=Date.now();if(failed)failedUntil=last+300000;}
+ function screensaver(on){try{if(window.webapis&&webapis.appcommon)webapis.appcommon.setScreenSaver(on?'SCREEN_SAVER_ON':'SCREEN_SAVER_OFF',function(){},function(){});}catch(e){}}
+ function stop(failed){screensaver(true);active=false;starting=false;video.pause();video.removeAttribute('src');video.load();video.hidden=true;clearTimeout(watchdog);last=Date.now();if(failed)failedUntil=last+300000;}
  function start(){if(!config||!config.urls.length||!home()||active||starting)return false;starting=true;video.hidden=false;video.src=config.urls[clip++%config.urls.length];video.muted=true;stalledAt=Date.now();lastTime=-1;
   watchdog=setTimeout(function(){stop(true);},15000);var p=video.play();if(p&&p.catch)p.catch(function(){stop(true);});return true;}
- video.addEventListener('playing',function(){starting=false;active=true;clearTimeout(watchdog);stalledAt=Date.now();});
+ video.addEventListener('playing',function(){starting=false;active=true;screensaver(false);clearTimeout(watchdog);stalledAt=Date.now();});
  video.addEventListener('error',function(){if(active||starting)stop(true);});
  video.addEventListener('ended',function(){active=false;starting=false;start();});
  function activity(e){last=Date.now();if(active||starting){stop(false);if(e.type!=='mousemove'){e.preventDefault();e.stopImmediatePropagation();}}}
@@ -18,10 +19,7 @@
  setInterval(function(){if(active||starting){if(!home())stop(false);else if(video.currentTime!==lastTime){lastTime=video.currentTime;stalledAt=Date.now();}else if(Date.now()-stalledAt>15000)stop(true);return;}
   if(config&&config.enabled&&home()&&Date.now()>failedUntil&&Date.now()-last>config.idleSeconds*1000)start();
  },1000);
- // The media service may require the launcher token; a rejected token is reloaded once.
- function loadConfig(retried){var bridge=window.DrentBridge,used=bridge?bridge.token():'',url='http://127.0.0.1:8766/aerial',x=new XMLHttpRequest();x.open('GET',bridge?bridge.url(url):url,true);x.timeout=8000;x.onload=function(){try{var d=JSON.parse(x.responseText);
-  if(x.status===403&&d.code==='bridge-token'&&bridge&&!retried){bridge.reload(used,function(changed){if(changed)loadConfig(true);});return;}
-  if(x.status===200&&Array.isArray(d.urls)){config={enabled:d.enabled===true,urls:d.urls.filter(function(u){return /^https:\/\//.test(u);}),idleSeconds:Math.max(30,Number(d.idleSeconds)||60)};}}catch(e){}};x.send();}
- loadConfig(false);
+ // Aerial settings come from the platform's media source.
+ if(window.FrameMedia&&window.FrameMedia.aerial)window.FrameMedia.aerial(function(d){if(d&&Array.isArray(d.urls))config={enabled:d.enabled===true,urls:d.urls.filter(function(u){return /^https:\/\//.test(u);}),idleSeconds:Math.max(30,Number(d.idleSeconds)||60)};});
  window.DrentAerial=window.RamonAerial={start:start,stop:function(){stop(false);},state:function(){return {configured:!!config&&config.urls.length>0,active:active,starting:starting};}};
 }());

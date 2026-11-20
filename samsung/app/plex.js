@@ -1,4 +1,5 @@
-/* Direct Plex client for the private Samsung widget; no companion service. */
+/* Samsung media source for the shared shelves and idle aerials: a direct Plex client inside the
+   private widget, configured by runtime-config.js. No companion service. */
 (function(){
  'use strict';
  var c=(window.DrentConfig||window.RamonConfig||{}).plex||{},command=0;
@@ -28,5 +29,5 @@
    return new Promise(function(resolve,reject){FrameDevice.launchApp('kIciSQlYEM.plex',function(err){if(err)reject(new Error(err.message||'Could not open Plex'));});pending.then(function(result){if(!/code="200"/.test(result))throw new Error('Plex did not accept playback');resolve({ok:true});}).catch(reject);});
   });
  }
- window.FramePlex={request:function(path,post,done){var p;if(path==='/continue')p=call('/hubs/continueWatching?count=12').then(function(d){var m=d.MediaContainer,raw=m.Metadata||[].concat.apply([],(m.Hub||[]).map(function(h){return h.Metadata||[];}));return {configured:true,items:raw.filter(valid).slice(0,12).map(item)};});else if(path==='/recent')p=recent();else if(/^\/play\/\d+$/.test(path))p=play(path.slice(6));else p=Promise.reject(new Error('Unknown Plex action'));p.then(function(d){done(null,d);}).catch(function(e){done(e.message);});}};
+ window.FrameMedia=window.FramePlex={aerial:function(done){done((window.DrentConfig||window.RamonConfig||{}).aerial);},image:function(path){return path;},opensDetails:false,request:function(path,post,done){var p;if(path==='/continue')p=call('/hubs/continueWatching?count=12').then(function(d){var m=d.MediaContainer,raw=m.Metadata||[].concat.apply([],(m.Hub||[]).map(function(h){return h.Metadata||[];}));return {configured:true,items:raw.filter(valid).slice(0,12).map(item)};});else if(path==='/recent')p=recent();else if(/^\/play\/\d+$/.test(path))p=play(path.slice(6));else p=Promise.reject(new Error('Unknown Plex action'));p.then(function(d){done(null,d);}).catch(function(e){done(e.message);});}};
 }());

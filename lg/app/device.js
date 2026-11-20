@@ -1,4 +1,5 @@
-/* LG webOS adapter. Talks only to the on-TV DrentOS loopback service. */
+/* LG webOS platform layer for the shared launcher in core/app. Talks only to the on-TV DrentOS
+   loopback services: device control and updates on 8765, the media service on 8766. */
 (function () {
   'use strict';
   // CSS.supports(gap) also accepts grid gap on older engines: measure flex once.
@@ -10,7 +11,27 @@
   if (gapProbe.scrollHeight !== 1) document.documentElement.classList.add('no-flex-gap');
   document.body.removeChild(gapProbe);
 
-  var BASE = 'http://127.0.0.1:8765';
+  /* Platform facts read by the shared launcher. App IDs, labels and storage are this platform's own. */
+  window.FramePlatform = {
+    id: 'webos',
+    storageKey: 'cleanframe.webos.v1',
+    legacyStorageKeys: [],
+    defaultApps: [
+      { id: 'appletv', name: 'Apple TV', mark: true, appId: 'com.webos.app.hdmi1' },
+      { id: 'com.webos.app.mediadiscovery', name: 'Media Player', mark: false, appId: 'com.webos.app.mediadiscovery' },
+      { id: 'com.webos.app.lifeonscreen', name: 'LG Gallery+', mark: false, appId: 'com.webos.app.lifeonscreen' },
+      { id: 'com.webos.app.browser', name: 'Web Browser', mark: false, appId: 'com.webos.app.browser' }
+    ],
+    nativeNames: { 'com.beb.plxnative': { name: 'Plex', replaces: 'PlxNative', always: true } },
+    artwork: {},
+    iconSource: /^(?:http:\/\/127\.0\.0\.1:8765\/icon\/[\w.-]+$|\/[^\/]|file:\/\/\/)/,
+    inputs: ['Inputs', 'tv'],
+    systemHome: { name: 'Launcher manager', description: 'Open the launcher manager and recovery controls' },
+    iconMarks: { 'io.strem.tv': 'stremio', nlziet: 'nlziet', netflix: 'netflix', amazon: 'primevideo', 'com.disney.disneyplus-prod': 'disneyplus', 'com.apple.appletv': 'appletv', spotify: 'spotify' },
+    drawnMarks: { 'com.webos.app.hdmi4': 'playstation', 'youtube.leanback.v4': 'youtube', 'org.webosbrew.hbchannel': 'homebrew', 'com.webos.app.hdmi3': 'windows', 'com.beb.plxnative': 'plex', 'cdp-30': 'plex' }
+  };
+
+  var BASE = 'http://127.0.0.1:8765', MEDIA = 'http://127.0.0.1:8766';
   var BRANDS = { netflix: 'netflix', 'youtube.leanback.v4': 'youtube', amazon: 'primevideo', 'com.disney.disneyplus-prod': 'disneyplus', 'com.apple.appletv': 'appletv', 'com.webos.app.hdmi1': 'appletv', spotify: 'spotify' };
   /* The local services accept requests only with the token they write into bridge-token.js.
      It travels in the URL: a custom header would need a preflight an older service rejects. */
@@ -90,11 +111,46 @@
       });
     });
   }
+  /* Media source for the shared shelves and idle aerials: the on-TV media service.
+     No account credentials reach this web app. A rejected launcher token is reloaded once. */
+  function mediaRequest(path, post, done, retried) {
+    var used = token(), x = new XMLHttpRequest();
+    x.open(post ? 'POST' : 'GET', withToken(MEDIA + path), true); x.timeout = 30000;
+    x.onload = function () {
+      var d;
+      try { d = JSON.parse(x.responseText); } catch (e) { done('Invalid media response'); return; }
+      if (x.status === 403 && d.code === 'bridge-token' && !retried) {
+        reloadToken(used, function (changed) { if (changed) mediaRequest(path, post, done, true); else done('Media service unavailable', d); });
+        return;
+      }
+      done(x.status === 200 ? null : d.error || 'Media service unavailable', d);
+    };
+    x.onerror = function () { done('Plex connection unavailable'); };
+    x.ontimeout = function () { done('Plex did not respond. Try again.'); };
+    if (post) x.setRequestHeader('X-CleanFrame', '1');
+    x.send();
+  }
+  function aerialConfig(done, retried) {
+    var used = token(), x = new XMLHttpRequest();
+    x.open('GET', withToken(MEDIA + '/aerial'), true); x.timeout = 8000;
+    x.onload = function () {
+      try {
+        var d = JSON.parse(x.responseText);
+        if (x.status === 403 && d.code === 'bridge-token' && !retried) { reloadToken(used, function (changed) { if (changed) aerialConfig(done, true); }); return; }
+        if (x.status === 200) done(d);
+      } catch (e) {}
+    };
+    x.send();
+  }
+  window.FrameMedia = { request: mediaRequest, aerial: aerialConfig, image: function (path) { return MEDIA + path; }, opensDetails: true };
+
   window.FrameDevice={launchApp:launchApp,launch:function(id,done){launchApp(id,done);},apps:apps,
     art:function(done){launchApp('com.webos.app.homeconnect',done);},
     home:function(done){launchApp('org.webosbrew.hbchannel',done);},
     settings:function(done){launchApp('com.palm.app.settings',done);},
     updateStatus:function(check,done){request('/api/update'+(check?'?check=1':''),null,done,12000);},
     applyUpdate:function(done){request('/api/update',{},done,30000);},
-    rollbackUpdate:function(done){request('/api/update/rollback',{},done,15000);}};
+    rollbackUpdate:function(done){request('/api/update/rollback',{},done,15000);},
+    /* Start-up diagnostics for the TV service log; the route takes no token and returns nothing. */
+    log:function(message){var x=new XMLHttpRequest();x.open('GET',BASE+'/api/log?m='+encodeURIComponent('CleanFrame webOS '+message),true);x.timeout=3000;x.send();}};
 }());

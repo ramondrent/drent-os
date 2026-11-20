@@ -1,5 +1,7 @@
 # DrentOS — LG edition
 
+> `app/` here is built from the shared launcher in `../core/app` plus `platform/`. Edit those, then run `python3 ../tools/build-apps.py`; see the [root README](../README.md#how-the-source-is-organised). `platform/device.js` holds the LG device adapter, the platform facts and the media-service client.
+
 Customized for rooted LG webOS TVs: the original G5 installation runs webOS 25; the CX adaptation runs webOS 5.6.2. `app/` is the launcher frontend; `service/tv-bridge.cjs` provides the local webOS app/input/icon bridge on `127.0.0.1:8765`, and `service/media-bridge.cjs` supplies Plex Continue Watching and native playback requests on `127.0.0.1:8766`.
 
 ## Development

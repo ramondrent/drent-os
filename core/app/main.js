@@ -533,6 +533,7 @@
     installed: null, latest: null, updateAvailable: false, canRollback: false,
     error: null, notice: null
   };
+  /* A platform whose updates start through its own start-up page supplies its own reload. */
   function reloadLauncher() {
     if (window.__DRENT_NO_RELOAD || window.__RAMON_NO_RELOAD) return;
     if (FrameDevice.reload) FrameDevice.reload(); else window.location.reload();

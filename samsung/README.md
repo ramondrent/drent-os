@@ -33,7 +33,7 @@ For a new device, follow the platform setup documentation, using your own creden
 
 The private runtime configuration, Plex token included, stays in the installed package and is never downloaded or uploaded. The repository is public, so no GitHub token is involved. `update: {enabled: false}` in a device's `runtime-config.json` hides the update section on that TV; `repo` and `branch` can be set there too.
 
-Each TV needs one install from the computer to get the updater. `npm run check:browser` covers the flow against a mocked GitHub (`scripts/check-update.mjs`). It has not yet been run on a real Samsung TV: storing and starting downloaded code on Tizen still needs owner confirmation on the Freestyle and on the Tizen 4 TV.
+Each TV needs one install from the computer to get the updater. `npm run check:browser` covers the flow against a mocked GitHub (`scripts/check-update.mjs`). On The Freestyle (Tizen 9) the owner has confirmed the check, a download and the restart into it. Revert on a real TV, the start-up fallback after a broken download, and the whole flow on the Tizen 4 TV still need owner confirmation.
 
 ## Assets and preferences
 
